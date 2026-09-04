@@ -2,7 +2,7 @@
 
 An active ragdoll addon for Godot 4.7 with Jolt Physics. It works for any body plan: bipeds, quadrupeds, spiders, and custom rigs. Characters stay controllable while they react to hits, stumble, fly, and get up again.
 
-Status: in development. Milestone 0 (generator and passive ragdoll) is done. The velocity-match drive, the capsule controller, LOD, and net sync come next.
+Status: in development. The generator, the velocity-match drive, and the capsule controller are done. LOD and net sync come next.
 
 ## Installation
 
@@ -28,6 +28,7 @@ Tuning lives in the profile `.tres`, not in the scene. Regenerate after a profil
 - `RagdollActor` is a `SkeletonModifier3D`. It reads the animated pose as the drive target and writes the physics pose back to the bones.
 - `RagdollBone` is the rigid body of one slot.
 - `RagdollDriver` is the strategy that pulls the bodies to the target pose. `RagdollVelocityMatchDriver` ships with the addon.
+- `RagdollCharacter` is a `CharacterBody3D` capsule that moves the character. The ragdoll hangs below it and reacts, but the capsule decides where the character goes.
 
 ## Drive
 
@@ -36,6 +37,27 @@ Set `driver` in the profile to a `RagdollVelocityMatchDriver`. Each physics tick
 At runtime, `actor.set_strength_multiplier(0.3, "arm_l")` scales the strength of one chain, and `actor.set_strength_multiplier(0.3)` scales all of them.
 
 The profile `friction` defaults to `0.4`. Higher values make planted feet stick to the ground and fight the drive.
+
+## Controller
+
+The controller layer is optional. Put the character scene under a `RagdollCharacter` and add the helper nodes you need as its children:
+
+```
+RagdollCharacter            capsule, movement, knock state machine
+  Rig                       your imported scene with Skeleton3D and RagdollActor
+  RagdollAim                one arm chain follows the aim direction, the head looks at it
+  RagdollFootSolver         biped feet find the ground below the animated foot
+  RagdollStepSolver         procedural stepping for legs without animation, for spiders and quadrupeds
+  RagdollAnimator           picks idle, walk, run, and fall clips from the capsule speed
+```
+
+The capsule adds its own `CapsuleShape3D` when `auto_capsule` is on. Put the capsule on a layer that only static geometry uses. Thrown objects must not collide with the capsule, or they stop before they reach the ragdoll bodies. The bodies and the capsule never collide with each other.
+
+The game sets `move_input`, `running`, `jump_requested`, and `face_direction` every tick. The animated skeleton moves with the capsule, and the driver adds the target velocity as feed-forward, so the bodies do not lag behind a walking capsule.
+
+Aim never comes from the ragdoll. Call `aim.set_aim(origin, direction)` with the camera ray and set `aim_active`. The hand chases an IK target on that ray with the built-in `TwoBoneIK3D`, the arm chain strength rises to `aim_strength`, and the head turns with `LookAtModifier3D`. Fire your shot from the same ray.
+
+Knocks are explicit. `character.knock(impulse)` launches the body. `character.hit(impulse, source, slot)` compares the impulse with `knock_impulse_threshold` times the total mass and either knocks or only shoves the body. The states are `DRIVEN`, `KNOCKED`, `SETTLING`, `RECOVERING`. The capsule turns its collision off and follows the root body while knocked. After the body settles, or after `settle_timeout`, the capsule teleports to the body and the drive strength ramps from zero to one over `get_up_time`. Set `get_up_animation` to play a clip during that ramp.
 
 ## Runtime API
 
@@ -47,6 +69,12 @@ actor.resume_drive()
 actor.set_strength_multiplier(0.5, "leg_l")
 actor.is_settled()
 actor.settled.connect(_on_corpse_settled)
+
+var character: RagdollCharacter = $Player
+character.move_input = direction
+character.hit(direction * 200.0, self, "chest")
+character.state_changed.connect(_on_state_changed)
+$Player/Aim.set_aim(camera.global_position, -camera.global_transform.basis.z)
 ```
 
 ## Requirements

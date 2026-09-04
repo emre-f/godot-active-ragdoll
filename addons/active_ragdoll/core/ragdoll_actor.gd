@@ -10,13 +10,18 @@ signal settled
 
 var bones: Array[RagdollBone] = []
 var targets: Array[Transform3D] = []
+var target_velocities: PackedVector3Array = PackedVector3Array()
+var _previous_targets: PackedVector3Array = PackedVector3Array()
 var drive_enabled: bool = true
 var is_limp: bool = false
+var strength_scale: float = 1.0
+var root_snap_enabled: bool = true
 
 var _free_bones: PackedInt32Array = PackedInt32Array()
 var _settled_ticks: int = 0
 var _has_settled: bool = false
 var _total_mass: float = 0.0
+var _reset_target_velocity: bool = true
 
 
 func _ready() -> void:
@@ -64,8 +69,11 @@ func _collect_bones() -> void:
 			bones.append(child)
 			_total_mass += child.mass
 	targets.resize(bones.size())
+	target_velocities.resize(bones.size())
+	_previous_targets.resize(bones.size())
 	for i in bones.size():
 		targets[i] = bones[i].global_transform
+		target_velocities[i] = Vector3.ZERO
 	_free_bones = RagdollFreeBones.collect(skeleton, bones)
 
 
@@ -95,10 +103,19 @@ func _process_modification_with_delta(_delta: float) -> void:
 		skeleton.set_bone_global_pose(bone.bone_index, pose)
 
 
+func _measure_target_velocities(delta: float) -> void:
+	for i in bones.size():
+		var origin := targets[i].origin
+		target_velocities[i] = Vector3.ZERO if _reset_target_velocity else (origin - _previous_targets[i]) / delta
+		_previous_targets[i] = origin
+	_reset_target_velocity = false
+
+
 func _physics_process(delta: float) -> void:
 	if bones.is_empty():
 		return
 	if drive_enabled and not is_limp and profile.driver != null:
+		_measure_target_velocities(delta)
 		profile.driver.drive(self, delta)
 	if is_limp:
 		_update_settle()
@@ -128,6 +145,7 @@ func snap_to_skeleton() -> void:
 		bone.linear_velocity = Vector3.ZERO
 		bone.angular_velocity = Vector3.ZERO
 		targets[i] = pose
+	_reset_target_velocity = true
 
 
 func knock(impulse: Vector3, source: Node = null) -> void:
@@ -150,6 +168,7 @@ func go_limp() -> void:
 
 func resume_drive() -> void:
 	is_limp = false
+	_reset_target_velocity = true
 	drive_enabled = true
 	_has_settled = false
 	_set_sleep_allowed(profile.driver == null)

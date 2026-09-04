@@ -6,6 +6,7 @@ extends RagdollDriver
 @export_range(0.0, 2.0, 0.05) var root_strength: float = 1.0
 @export_range(0.0, 5.0, 0.05) var max_root_separation: float = 0.5
 @export_range(0.0, 5000.0, 1.0) var max_linear_acceleration: float = 80.0
+@export_range(0.0, 1.0, 0.05) var feed_forward: float = 1.0
 @export_range(0.0, 20000.0, 1.0) var max_angular_acceleration: float = 1500.0
 
 
@@ -16,15 +17,16 @@ func drive(actor: RagdollActor, delta: float) -> void:
 	var max_dw := max_angular_acceleration * delta
 	var limb_time := maxf(response_time, delta)
 	var root_time := maxf(root_response_time, delta)
+	var scale := actor.strength_scale
 	for i in bones.size():
 		var bone := bones[i]
-		var strength := bone.strength * (root_strength if i == 0 else 1.0)
+		var strength := bone.strength * scale * (root_strength if i == 0 else 1.0)
 		if strength <= 0.0:
 			continue
 		var time := root_time if i == 0 else limb_time
 		var target := targets[i]
 		var current := bone.global_transform
-		var desired_linear := (target.origin - current.origin) / time
+		var desired_linear := (target.origin - current.origin) / time + actor.target_velocities[i] * feed_forward
 		var dv := ((desired_linear - bone.linear_velocity) * strength).limit_length(max_dv)
 		bone.apply_central_impulse(dv * bone.mass)
 		var rotation := (target.basis * current.basis.inverse()).get_rotation_quaternion()
@@ -39,7 +41,7 @@ func drive(actor: RagdollActor, delta: float) -> void:
 		if is_zero_approx(inverse_inertia.determinant()):
 			continue
 		bone.apply_torque_impulse(inverse_inertia.inverse() * dw)
-	if max_root_separation > 0.0 and not bones.is_empty():
+	if max_root_separation > 0.0 and actor.root_snap_enabled and not bones.is_empty():
 		var offset := targets[0].origin - bones[0].global_position
 		if offset.length() > max_root_separation:
 			actor.shift_bones(offset)
