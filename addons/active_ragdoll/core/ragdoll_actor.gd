@@ -44,6 +44,7 @@ func refresh() -> void:
 	_apply_collision_rules()
 	if profile.driver != null:
 		profile.driver.on_attached(self)
+	_set_sleep_allowed(is_limp or profile.driver == null)
 	snap_to_skeleton()
 
 
@@ -57,6 +58,7 @@ func _has_generated_bones() -> bool:
 func _collect_bones() -> void:
 	bones.clear()
 	_total_mass = 0.0
+	var skeleton := get_skeleton()
 	for child in get_children():
 		if child is RagdollBone:
 			bones.append(child)
@@ -64,25 +66,7 @@ func _collect_bones() -> void:
 	targets.resize(bones.size())
 	for i in bones.size():
 		targets[i] = bones[i].global_transform
-	_collect_free_bones()
-
-
-func _collect_free_bones() -> void:
-	_free_bones.clear()
-	var skeleton := get_skeleton()
-	var slot_bones := PackedInt32Array()
-	for bone in bones:
-		slot_bones.append(bone.bone_index)
-	for bone_index in skeleton.get_bone_count():
-		var current := bone_index
-		var covered := false
-		while current >= 0:
-			if slot_bones.has(current):
-				covered = true
-				break
-			current = skeleton.get_bone_parent(current)
-		if not covered:
-			_free_bones.append(bone_index)
+	_free_bones = RagdollFreeBones.collect(skeleton, bones)
 
 
 func _apply_collision_rules() -> void:
@@ -103,24 +87,12 @@ func _process_modification_with_delta(_delta: float) -> void:
 		var bone := bones[i]
 		if capture_targets:
 			targets[i] = skeleton.global_transform * skeleton.get_bone_global_pose(bone.bone_index)
-	_move_free_bones(skeleton, to_skeleton)
+	RagdollFreeBones.follow_root(skeleton, to_skeleton, bones[0], _free_bones)
 	for i in bones.size():
 		var bone := bones[i]
 		var pose := to_skeleton * bone.global_transform
 		pose.basis = pose.basis.orthonormalized()
 		skeleton.set_bone_global_pose(bone.bone_index, pose)
-
-
-func _move_free_bones(skeleton: Skeleton3D, to_skeleton: Transform3D) -> void:
-	if _free_bones.is_empty():
-		return
-	var root := bones[0]
-	var animated_root := skeleton.get_bone_global_pose(root.bone_index)
-	var physics_root := to_skeleton * root.global_transform
-	physics_root.basis = physics_root.basis.orthonormalized()
-	var delta := physics_root * animated_root.affine_inverse()
-	for bone_index in _free_bones:
-		skeleton.set_bone_global_pose(bone_index, delta * skeleton.get_bone_global_pose(bone_index))
 
 
 func _physics_process(delta: float) -> void:
@@ -171,6 +143,7 @@ func go_limp() -> void:
 	drive_enabled = false
 	_settled_ticks = 0
 	_has_settled = false
+	_set_sleep_allowed(true)
 	for bone in bones:
 		bone.sleeping = false
 
@@ -179,6 +152,26 @@ func resume_drive() -> void:
 	is_limp = false
 	drive_enabled = true
 	_has_settled = false
+	_set_sleep_allowed(profile.driver == null)
+
+
+func _set_sleep_allowed(allowed: bool) -> void:
+	for bone in bones:
+		bone.can_sleep = allowed
+		if not allowed:
+			bone.sleeping = false
+
+
+func set_strength_multiplier(multiplier: float, chain_name: String = "") -> void:
+	for bone in bones:
+		var chain := profile.archetype.chain_for_slot(bone.slot)
+		if chain_name.is_empty() or (chain != null and chain.chain_name == chain_name):
+			bone.strength = profile.stiffness_for(bone.slot) * multiplier
+
+
+func shift_bones(offset: Vector3) -> void:
+	for i in bones.size():
+		bones[i].global_position += offset
 
 
 func set_drive_enabled(enabled: bool) -> void:

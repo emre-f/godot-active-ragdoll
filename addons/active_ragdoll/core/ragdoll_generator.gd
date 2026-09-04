@@ -63,7 +63,7 @@ static func _build_body(actor: Node3D, skeleton: Skeleton3D, profile: RagdollPro
 	bone.bone_index = bone_index
 	bone.parent_slot = parent_slot
 	bone.parent_bone = parent_bone
-	bone.strength = settings.stiffness_multiplier
+	bone.strength = profile.stiffness_for(slot)
 	bone.mass = settings.mass if settings.mass > 0.0 else 1.0
 	bone.bone_length = length
 	bone.bone_axis = (world.basis.inverse() * world_direction).normalized()
@@ -78,6 +78,9 @@ static func _build_body(actor: Node3D, skeleton: Skeleton3D, profile: RagdollPro
 	bone.linear_damp = profile.linear_damp
 	bone.angular_damp = profile.angular_damp
 	bone.continuous_cd = profile.continuous_collision
+	bone.physics_material_override = PhysicsMaterial.new()
+	bone.physics_material_override.friction = profile.friction
+	bone.physics_material_override.bounce = profile.bounce
 	bone.collision_layer = profile.collision_layer
 	bone.collision_mask = profile.collision_mask
 	bone.top_level = true

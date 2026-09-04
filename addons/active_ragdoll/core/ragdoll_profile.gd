@@ -15,6 +15,8 @@ extends Resource
 @export_range(0.0, 20.0, 0.1) var linear_damp: float = 0.5
 @export_range(0.0, 20.0, 0.1) var angular_damp: float = 2.0
 @export var continuous_collision: bool = true
+@export_range(0.0, 2.0, 0.05) var friction: float = 0.4
+@export_range(0.0, 1.0, 0.05) var bounce: float = 0.0
 @export var debug_meshes: bool = false
 @export_range(0.0, 1.0, 0.001) var settle_energy_threshold: float = 0.02
 @export_range(1, 300, 1) var settle_ticks: int = 30

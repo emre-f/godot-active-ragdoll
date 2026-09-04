@@ -27,6 +27,15 @@ Tuning lives in the profile `.tres`, not in the scene. Regenerate after a profil
 - `RagdollProfile` holds per-slot mass, collider shape, joint limits, stiffness, and the driver.
 - `RagdollActor` is a `SkeletonModifier3D`. It reads the animated pose as the drive target and writes the physics pose back to the bones.
 - `RagdollBone` is the rigid body of one slot.
+- `RagdollDriver` is the strategy that pulls the bodies to the target pose. `RagdollVelocityMatchDriver` ships with the addon.
+
+## Drive
+
+Set `driver` in the profile to a `RagdollVelocityMatchDriver`. Each physics tick it computes the velocity that moves a body to its animated target in `response_time` seconds and applies the difference as an impulse. `response_time` is the one stiffness knob: `0.0` reaches the target in one tick and looks kinematic, `0.5` lags and looks floppy. The impulse is scaled by the bone `strength`, which comes from the chain `stiffness` and the slot `stiffness_multiplier`. `max_linear_acceleration` caps how hard the drive pulls, so a heavy object can still push a driven body. When the root body is more than `max_root_separation` from its target, every body is moved to close the gap.
+
+At runtime, `actor.set_strength_multiplier(0.3, "arm_l")` scales the strength of one chain, and `actor.set_strength_multiplier(0.3)` scales all of them.
+
+The profile `friction` defaults to `0.4`. Higher values make planted feet stick to the ground and fight the drive.
 
 ## Runtime API
 
@@ -35,6 +44,7 @@ var actor: RagdollActor = $Skeleton3D/RagdollActor
 actor.knock(Vector3(0, 4, -8) * actor.total_mass())
 actor.go_limp()
 actor.resume_drive()
+actor.set_strength_multiplier(0.5, "leg_l")
 actor.is_settled()
 actor.settled.connect(_on_corpse_settled)
 ```
