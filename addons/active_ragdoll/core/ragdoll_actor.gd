@@ -13,6 +13,7 @@ var targets: Array[Transform3D] = []
 var drive_enabled: bool = true
 var is_limp: bool = false
 
+var _free_bones: PackedInt32Array = PackedInt32Array()
 var _settled_ticks: int = 0
 var _has_settled: bool = false
 var _total_mass: float = 0.0
@@ -63,6 +64,25 @@ func _collect_bones() -> void:
 	targets.resize(bones.size())
 	for i in bones.size():
 		targets[i] = bones[i].global_transform
+	_collect_free_bones()
+
+
+func _collect_free_bones() -> void:
+	_free_bones.clear()
+	var skeleton := get_skeleton()
+	var slot_bones := PackedInt32Array()
+	for bone in bones:
+		slot_bones.append(bone.bone_index)
+	for bone_index in skeleton.get_bone_count():
+		var current := bone_index
+		var covered := false
+		while current >= 0:
+			if slot_bones.has(current):
+				covered = true
+				break
+			current = skeleton.get_bone_parent(current)
+		if not covered:
+			_free_bones.append(bone_index)
 
 
 func _apply_collision_rules() -> void:
@@ -83,7 +103,21 @@ func _process_modification_with_delta(_delta: float) -> void:
 		var bone := bones[i]
 		if capture_targets:
 			targets[i] = skeleton.global_transform * skeleton.get_bone_global_pose(bone.bone_index)
+	_move_free_bones(skeleton, to_skeleton)
+	for i in bones.size():
+		var bone := bones[i]
 		skeleton.set_bone_global_pose(bone.bone_index, to_skeleton * bone.global_transform)
+
+
+func _move_free_bones(skeleton: Skeleton3D, to_skeleton: Transform3D) -> void:
+	if _free_bones.is_empty():
+		return
+	var root := bones[0]
+	var animated_root := skeleton.get_bone_global_pose(root.bone_index)
+	var physics_root := to_skeleton * root.global_transform
+	var delta := physics_root * animated_root.affine_inverse()
+	for bone_index in _free_bones:
+		skeleton.set_bone_global_pose(bone_index, delta * skeleton.get_bone_global_pose(bone_index))
 
 
 func _physics_process(delta: float) -> void:
