@@ -4,10 +4,10 @@ extends RefCounted
 const SYNONYMS := {
 	"pelvis": ["pelvis", "hips", "hip"],
 	"spine": ["spine", "abdomen", "lowerback", "waist"],
-	"chest": ["chest", "torso", "upperchest", "ribcage"],
+	"chest": ["chest", "torso", "upperchest", "ribcage", "spine"],
 	"neck": ["neck"],
 	"head": ["head"],
-	"upper_arm": ["upperarm", "uparm", "arm", "humerus", "shoulder"],
+	"upper_arm": ["upperarm", "uparm", "arm", "humerus"],
 	"forearm": ["forearm", "lowerarm", "elbow", "radius", "ulna"],
 	"hand": ["hand", "wrist", "palm"],
 	"thigh": ["thigh", "upperleg", "upleg", "femur", "hip"],
@@ -15,7 +15,7 @@ const SYNONYMS := {
 	"foot": ["foot", "ankle"],
 	"upper_leg": ["upperleg", "upleg", "thigh", "shoulder", "humerus", "leg"],
 	"lower_leg": ["lowerleg", "shin", "calf", "forearm", "knee"],
-	"cephalothorax": ["cephalothorax", "thorax", "body", "root", "hips"],
+	"cephalothorax": ["cephalothorax", "thorax", "sternum", "carapace", "body", "root", "hips"],
 	"abdomen": ["abdomen", "belly", "butt"],
 	"tail": ["tail"],
 	"coxa": ["coxa", "hip", "upper", "root"],
@@ -26,6 +26,8 @@ const SYNONYMS := {
 const SIDE_TOKENS := {"l": "l", "left": "l", "lft": "l", "r": "r", "right": "r", "rgt": "r"}
 const POSITION_TOKENS := {"front": "front", "fore": "front", "f": "front", "hind": "hind", "rear": "hind", "back": "hind", "h": "hind", "b": "hind"}
 const SLOT_SUFFIXES := {"_fl": ["l", "front"], "_fr": ["r", "front"], "_hl": ["l", "hind"], "_hr": ["r", "hind"]}
+const SEGMENT_WORDS := {"coxa": 1, "femur": 2, "tibia": 3}
+const NUMBER_PREFERENCE := {"spine": -1, "chest": 1}
 
 
 static func suggest(archetype: RagdollArchetype, skeleton: Skeleton3D) -> Dictionary:
@@ -58,12 +60,20 @@ static func _score(slot: String, bone_name: String) -> int:
 		return 0
 	if slot_parts.position != "" and slot_parts.position != bone_parts.position:
 		return 0
-	if slot_parts.index != "" and slot_parts.index != bone_parts.index:
+	var slot_numbers: Array = slot_parts.numbers
+	var bone_numbers: Array = bone_parts.numbers
+	if bone_numbers.slice(0, slot_numbers.size()) != slot_numbers:
 		return 0
 	var slot_core: String = slot_parts.core
 	var bone_core: String = bone_parts.core
+	var segment := _segment_of(slot_core)
+	if segment > 0 and bone_numbers.size() > slot_numbers.size():
+		return 90 if bone_numbers[slot_numbers.size()] == segment else 0
+	var number_bonus := 0
+	if slot_numbers.is_empty() and not bone_numbers.is_empty():
+		number_bonus = NUMBER_PREFERENCE.get(slot_core, -1) * bone_numbers[0]
 	if bone_core == slot_core:
-		return 100
+		return 100 + number_bonus
 	var best := 0
 	for key in SYNONYMS:
 		if not slot_core.contains(key.replace("_", "")):
@@ -77,7 +87,14 @@ static func _score(slot: String, bone_name: String) -> int:
 		best = maxi(best, 40 + slot_core.length())
 	elif bone_core.contains(slot_core):
 		best = maxi(best, 20 + slot_core.length())
-	return best
+	return best + number_bonus if best > 0 else 0
+
+
+static func _segment_of(slot_core: String) -> int:
+	for word in SEGMENT_WORDS:
+		if slot_core.contains(word):
+			return SEGMENT_WORDS[word]
+	return 0
 
 
 static func _normalize(bone_name: String) -> String:
@@ -85,9 +102,6 @@ static func _normalize(bone_name: String) -> String:
 	if core.contains(":"):
 		core = core.get_slice(":", core.get_slice_count(":") - 1)
 	core = core.replace("mixamorig", "").replace(" ", "_").replace("-", "_").replace(".", "_")
-	for prefix in ["left", "right"]:
-		if core.begins_with(prefix) and core.length() > prefix.length():
-			core = prefix + "_" + core.substr(prefix.length())
 	return core
 
 
@@ -100,29 +114,34 @@ static func _describe(text: String) -> Dictionary:
 			side = SLOT_SUFFIXES[suffix][0]
 			position = SLOT_SUFFIXES[suffix][1]
 			lowered = lowered.substr(0, lowered.length() - suffix.length())
-	var core_tokens := PackedStringArray()
-	var index := ""
-	for token in lowered.split("_", false):
+	var core := ""
+	var numbers: Array = []
+	for raw_token in lowered.split("_", false):
+		var token: String = raw_token
+		for prefix in ["left", "right"]:
+			if token.begins_with(prefix) and token.length() > prefix.length():
+				side = SIDE_TOKENS[prefix]
+				token = token.substr(prefix.length())
 		if SIDE_TOKENS.has(token):
 			side = SIDE_TOKENS[token]
 		elif POSITION_TOKENS.has(token):
 			position = POSITION_TOKENS[token]
-		elif token.is_valid_int():
-			index = token
 		else:
-			core_tokens.append(token)
-	var raw_core := "".join(core_tokens)
-	if index == "":
-		index = _index_of(raw_core)
-	var core := ""
-	for i in raw_core.length():
-		if not raw_core[i].is_valid_int():
-			core += raw_core[i]
-	return {"side": side, "position": position, "index": index, "core": core}
+			core += _split_digits(token, numbers)
+	return {"side": side, "position": position, "numbers": numbers, "core": core}
 
 
-static func _index_of(text: String) -> String:
-	for i in text.length():
-		if text[i].is_valid_int():
-			return text[i]
-	return ""
+static func _split_digits(token: String, numbers: Array) -> String:
+	var letters := ""
+	var digits := ""
+	for i in token.length():
+		if token[i].is_valid_int():
+			digits += token[i]
+		else:
+			if not digits.is_empty():
+				numbers.append(int(digits))
+				digits = ""
+			letters += token[i]
+	if not digits.is_empty():
+		numbers.append(int(digits))
+	return letters

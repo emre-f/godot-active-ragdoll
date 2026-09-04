@@ -8,11 +8,13 @@ const MIN_VERTICES := 12
 
 var skeleton: Skeleton3D
 var vertices_by_bone: Dictionary = {}
+var skeleton_scale: float = 1.0
 
 
 static func for_skeleton(target: Skeleton3D) -> RagdollMeshFitter:
 	var fitter := RagdollMeshFitter.new()
 	fitter.skeleton = target
+	fitter.skeleton_scale = target.global_transform.basis.get_scale().x
 	fitter._collect()
 	return fitter
 
@@ -54,7 +56,8 @@ func _measure_along(points: PackedVector3Array, local_axis: Vector3) -> Dictiona
 	var t_min := along[int((1.0 - LENGTH_PERCENTILE) * (along.size() - 1))]
 	var t_max := along[int(LENGTH_PERCENTILE * (along.size() - 1))]
 	var radius := across[int(RADIUS_PERCENTILE * (across.size() - 1))]
-	return {"axis": axis, "length": maxf(t_max - t_min, 0.02), "radius": maxf(radius, 0.01), "center": axis * (t_min + t_max) * 0.5}
+	var s := skeleton_scale
+	return {"axis": axis, "length": maxf((t_max - t_min) * s, 0.02), "radius": maxf(radius * s, 0.01), "center": axis * (t_min + t_max) * 0.5 * s}
 
 
 func _slot_owner(bone_index: int, slot_bone_indices: PackedInt32Array) -> int:
@@ -71,8 +74,9 @@ func _collect() -> void:
 		var mesh := mesh_instance.mesh
 		var to_skeleton := skeleton.global_transform.affine_inverse() * mesh_instance.global_transform
 		var bind_to_bone := _bind_to_bone(mesh_instance)
+		var bind_to_skeleton := _bind_to_skeleton(mesh_instance, bind_to_bone)
 		for surface in mesh.get_surface_count():
-			_collect_surface(mesh.surface_get_arrays(surface), to_skeleton, bind_to_bone)
+			_collect_surface(mesh.surface_get_arrays(surface), to_skeleton, bind_to_bone, bind_to_skeleton)
 
 
 func _skinned_meshes() -> Array[MeshInstance3D]:
@@ -104,7 +108,19 @@ func _bind_to_bone(mesh_instance: MeshInstance3D) -> PackedInt32Array:
 	return mapping
 
 
-func _collect_surface(arrays: Array, to_skeleton: Transform3D, bind_to_bone: PackedInt32Array) -> void:
+func _bind_to_skeleton(mesh_instance: MeshInstance3D, bind_to_bone: PackedInt32Array) -> Array[Transform3D]:
+	var result: Array[Transform3D] = []
+	var skin := mesh_instance.skin
+	for i in bind_to_bone.size():
+		var bone := bind_to_bone[i]
+		if skin == null or bone < 0:
+			result.append(Transform3D())
+		else:
+			result.append(skeleton.get_bone_global_rest(bone) * skin.get_bind_pose(i))
+	return result
+
+
+func _collect_surface(arrays: Array, to_skeleton: Transform3D, bind_to_bone: PackedInt32Array, bind_to_skeleton: Array[Transform3D]) -> void:
 	if arrays.is_empty():
 		return
 	var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
@@ -114,7 +130,7 @@ func _collect_surface(arrays: Array, to_skeleton: Transform3D, bind_to_bone: Pac
 		return
 	var influences: int = bones.size() / positions.size()
 	for vertex_index in positions.size():
-		var position := to_skeleton * positions[vertex_index]
+		var mesh_position := to_skeleton * positions[vertex_index]
 		for k in influences:
 			var slot: int = vertex_index * influences + k
 			if weights[slot] < MIN_WEIGHT:
@@ -123,6 +139,8 @@ func _collect_surface(arrays: Array, to_skeleton: Transform3D, bind_to_bone: Pac
 			if bind < 0 or bind >= bind_to_bone.size():
 				continue
 			var bone := bind_to_bone[bind]
+			if bone < 0:
+				continue
 			if not vertices_by_bone.has(bone):
 				vertices_by_bone[bone] = PackedVector3Array()
-			vertices_by_bone[bone].append(position)
+			vertices_by_bone[bone].append(bind_to_skeleton[bind] * mesh_position)

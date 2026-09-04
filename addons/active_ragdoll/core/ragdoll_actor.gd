@@ -106,7 +106,9 @@ func _process_modification_with_delta(_delta: float) -> void:
 	_move_free_bones(skeleton, to_skeleton)
 	for i in bones.size():
 		var bone := bones[i]
-		skeleton.set_bone_global_pose(bone.bone_index, to_skeleton * bone.global_transform)
+		var pose := to_skeleton * bone.global_transform
+		pose.basis = pose.basis.orthonormalized()
+		skeleton.set_bone_global_pose(bone.bone_index, pose)
 
 
 func _move_free_bones(skeleton: Skeleton3D, to_skeleton: Transform3D) -> void:
@@ -115,6 +117,7 @@ func _move_free_bones(skeleton: Skeleton3D, to_skeleton: Transform3D) -> void:
 	var root := bones[0]
 	var animated_root := skeleton.get_bone_global_pose(root.bone_index)
 	var physics_root := to_skeleton * root.global_transform
+	physics_root.basis = physics_root.basis.orthonormalized()
 	var delta := physics_root * animated_root.affine_inverse()
 	for bone_index in _free_bones:
 		skeleton.set_bone_global_pose(bone_index, delta * skeleton.get_bone_global_pose(bone_index))

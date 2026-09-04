@@ -79,6 +79,7 @@ func validate(skeleton: Skeleton3D) -> PackedStringArray:
 	if skeleton != null:
 		for bone_name in bone_map.unresolved_bones(skeleton):
 			problems.append("bone %s does not exist in %s" % [bone_name, skeleton.name])
-		if not skeleton.global_transform.basis.is_conformal() or not is_equal_approx(skeleton.global_transform.basis.get_scale().x, 1.0):
-			problems.append("skeleton %s has scale; apply scale on import so bodies match bones" % skeleton.name)
+		var scale := skeleton.global_transform.basis.get_scale()
+		if not is_equal_approx(scale.x, scale.y) or not is_equal_approx(scale.x, scale.z):
+			problems.append("skeleton %s has non-uniform scale; bodies cannot follow it" % skeleton.name)
 	return problems
