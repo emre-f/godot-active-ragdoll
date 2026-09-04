@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="RagdollArchetype" format=3]
+
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_chain.gd" id="1_7els3"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_archetype.gd" id="2_o3507"]
+
+[resource]
+script = ExtResource("2_o3507")
+archetype_name = "Custom"
+root_slot = "root"
+ground_contact_slots = PackedStringArray()

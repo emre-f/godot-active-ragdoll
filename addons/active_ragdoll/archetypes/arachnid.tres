@@ -1,0 +1,133 @@
+[gd_resource type="Resource" script_class="RagdollArchetype" format=3]
+
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_chain.gd" id="1_vm66h"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_archetype.gd" id="2_rkmja"]
+
+[sub_resource type="Resource" id="Resource_xfj33"]
+script = ExtResource("1_vm66h")
+chain_name = "abdomen"
+chain_type = 4
+parent_slot = "cephalothorax"
+slots = PackedStringArray("abdomen")
+twist_limit_degrees = 15.0
+swing_limit_degrees = 25.0
+stiffness = 0.7
+radius_ratio = 0.3
+
+[sub_resource type="Resource" id="Resource_uk1ci"]
+script = ExtResource("1_vm66h")
+chain_name = "leg1_l"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg1_l_coxa", "leg1_l_femur", "leg1_l_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_7da5l"]
+script = ExtResource("1_vm66h")
+chain_name = "leg1_r"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg1_r_coxa", "leg1_r_femur", "leg1_r_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_58a1o"]
+script = ExtResource("1_vm66h")
+chain_name = "leg2_l"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg2_l_coxa", "leg2_l_femur", "leg2_l_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_bhpyn"]
+script = ExtResource("1_vm66h")
+chain_name = "leg2_r"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg2_r_coxa", "leg2_r_femur", "leg2_r_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_easuy"]
+script = ExtResource("1_vm66h")
+chain_name = "leg3_l"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg3_l_coxa", "leg3_l_femur", "leg3_l_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_nh7gl"]
+script = ExtResource("1_vm66h")
+chain_name = "leg3_r"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg3_r_coxa", "leg3_r_femur", "leg3_r_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_yxbx7"]
+script = ExtResource("1_vm66h")
+chain_name = "leg4_l"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg4_l_coxa", "leg4_l_femur", "leg4_l_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_71amc"]
+script = ExtResource("1_vm66h")
+chain_name = "leg4_r"
+chain_type = 3
+parent_slot = "cephalothorax"
+slots = PackedStringArray("leg4_r_coxa", "leg4_r_femur", "leg4_r_tibia")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 50.0
+stiffness = 0.5
+radius_ratio = 0.12
+merge_tip_into_parent = true
+
+[resource]
+script = ExtResource("2_rkmja")
+archetype_name = "Arachnid"
+root_slot = "cephalothorax"
+root_radius_ratio = 0.8
+chains = Array[ExtResource("1_vm66h")]([SubResource("Resource_xfj33"), SubResource("Resource_uk1ci"), SubResource("Resource_7da5l"), SubResource("Resource_58a1o"), SubResource("Resource_bhpyn"), SubResource("Resource_easuy"), SubResource("Resource_nh7gl"), SubResource("Resource_yxbx7"), SubResource("Resource_71amc")])
+symmetry = {
+"leg1_l_coxa": "leg1_r_coxa",
+"leg1_l_femur": "leg1_r_femur",
+"leg1_l_tibia": "leg1_r_tibia",
+"leg2_l_coxa": "leg2_r_coxa",
+"leg2_l_femur": "leg2_r_femur",
+"leg2_l_tibia": "leg2_r_tibia",
+"leg3_l_coxa": "leg3_r_coxa",
+"leg3_l_femur": "leg3_r_femur",
+"leg3_l_tibia": "leg3_r_tibia",
+"leg4_l_coxa": "leg4_r_coxa",
+"leg4_l_femur": "leg4_r_femur",
+"leg4_l_tibia": "leg4_r_tibia"
+}
+ground_contact_slots = PackedStringArray("leg1_l_tibia", "leg1_r_tibia", "leg2_l_tibia", "leg2_r_tibia", "leg3_l_tibia", "leg3_r_tibia", "leg4_l_tibia", "leg4_r_tibia")

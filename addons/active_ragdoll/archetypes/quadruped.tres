@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="RagdollArchetype" format=3]
+
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_chain.gd" id="1_u8c75"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_archetype.gd" id="2_vri2e"]
+
+[sub_resource type="Resource" id="Resource_8agj3"]
+script = ExtResource("1_u8c75")
+chain_name = "spine"
+parent_slot = "pelvis"
+slots = PackedStringArray("spine", "chest")
+twist_limit_degrees = 15.0
+swing_limit_degrees = 25.0
+stiffness = 0.7
+radius_ratio = 0.55
+
+[sub_resource type="Resource" id="Resource_5hfpl"]
+script = ExtResource("1_u8c75")
+chain_name = "neck"
+chain_type = 1
+parent_slot = "chest"
+slots = PackedStringArray("neck", "head")
+swing_limit_degrees = 45.0
+stiffness = 0.8
+radius_ratio = 0.35
+
+[sub_resource type="Resource" id="Resource_hfjva"]
+script = ExtResource("1_u8c75")
+chain_name = "leg_fl"
+chain_type = 3
+parent_slot = "chest"
+slots = PackedStringArray("upper_leg_fl", "lower_leg_fl", "foot_fl")
+twist_limit_degrees = 15.0
+stiffness = 0.5
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_gkahw"]
+script = ExtResource("1_u8c75")
+chain_name = "leg_fr"
+chain_type = 3
+parent_slot = "chest"
+slots = PackedStringArray("upper_leg_fr", "lower_leg_fr", "foot_fr")
+twist_limit_degrees = 15.0
+stiffness = 0.5
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_k4m3i"]
+script = ExtResource("1_u8c75")
+chain_name = "leg_hl"
+chain_type = 3
+parent_slot = "pelvis"
+slots = PackedStringArray("thigh_hl", "shin_hl", "foot_hl")
+twist_limit_degrees = 15.0
+stiffness = 0.5
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_y0nho"]
+script = ExtResource("1_u8c75")
+chain_name = "leg_hr"
+chain_type = 3
+parent_slot = "pelvis"
+slots = PackedStringArray("thigh_hr", "shin_hr", "foot_hr")
+twist_limit_degrees = 15.0
+stiffness = 0.5
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_sspex"]
+script = ExtResource("1_u8c75")
+chain_name = "tail"
+chain_type = 4
+parent_slot = "pelvis"
+slots = PackedStringArray("tail_1", "tail_2")
+swing_limit_degrees = 50.0
+stiffness = 0.3
+radius_ratio = 0.3
+merge_tip_into_parent = true
+
+[resource]
+script = ExtResource("2_vri2e")
+archetype_name = "Quadruped"
+chains = Array[ExtResource("1_u8c75")]([SubResource("Resource_8agj3"), SubResource("Resource_5hfpl"), SubResource("Resource_hfjva"), SubResource("Resource_gkahw"), SubResource("Resource_k4m3i"), SubResource("Resource_y0nho"), SubResource("Resource_sspex")])
+symmetry = {
+"foot_fl": "foot_fr",
+"foot_hl": "foot_hr",
+"lower_leg_fl": "lower_leg_fr",
+"shin_hl": "shin_hr",
+"thigh_hl": "thigh_hr",
+"upper_leg_fl": "upper_leg_fr"
+}
+ground_contact_slots = PackedStringArray("foot_fl", "foot_fr", "foot_hl", "foot_hr")

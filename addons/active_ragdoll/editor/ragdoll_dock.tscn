@@ -1,0 +1,46 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/active_ragdoll/editor/ragdoll_dock.gd" id="1"]
+
+[node name="ActiveRagdoll" type="ScrollContainer"]
+custom_minimum_size = Vector2(260, 0)
+script = ExtResource("1")
+
+[node name="Content" type="VBoxContainer" parent="."]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SkeletonLabel" type="Label" parent="Content"]
+text = "Select a Skeleton3D in the scene tree."
+autowrap_mode = 3
+
+[node name="ArchetypeRow" type="HBoxContainer" parent="Content"]
+
+[node name="ArchetypeTitle" type="Label" parent="Content/ArchetypeRow"]
+text = "Archetype"
+
+[node name="ArchetypeOptions" type="OptionButton" parent="Content/ArchetypeRow"]
+size_flags_horizontal = 3
+
+[node name="ProfileRow" type="HBoxContainer" parent="Content"]
+
+[node name="ProfileTitle" type="Label" parent="Content/ProfileRow"]
+text = "Profile"
+
+[node name="ProfilePath" type="LineEdit" parent="Content/ProfileRow"]
+size_flags_horizontal = 3
+placeholder_text = "res://characters/hero_ragdoll.tres"
+
+[node name="AutoMapButton" type="Button" parent="Content"]
+text = "Auto-map bones"
+
+[node name="SlotList" type="VBoxContainer" parent="Content"]
+
+[node name="DebugMeshes" type="CheckBox" parent="Content"]
+text = "Add debug meshes"
+
+[node name="GenerateButton" type="Button" parent="Content"]
+text = "Generate ragdoll"
+
+[node name="Status" type="Label" parent="Content"]
+autowrap_mode = 3

@@ -1,0 +1,85 @@
+[gd_resource type="Resource" script_class="RagdollArchetype" format=3]
+
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_chain.gd" id="1_60xi8"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_archetype.gd" id="2_qnnnh"]
+
+[sub_resource type="Resource" id="Resource_nu72m"]
+script = ExtResource("1_60xi8")
+chain_name = "spine"
+parent_slot = "pelvis"
+slots = PackedStringArray("spine", "chest")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 30.0
+stiffness = 0.6
+radius_ratio = 0.55
+
+[sub_resource type="Resource" id="Resource_d4k11"]
+script = ExtResource("1_60xi8")
+chain_name = "neck"
+chain_type = 1
+parent_slot = "chest"
+slots = PackedStringArray("neck", "head")
+twist_limit_degrees = 40.0
+swing_limit_degrees = 40.0
+stiffness = 0.8
+radius_ratio = 0.35
+
+[sub_resource type="Resource" id="Resource_pua3j"]
+script = ExtResource("1_60xi8")
+chain_name = "arm_l"
+chain_type = 2
+parent_slot = "chest"
+slots = PackedStringArray("upper_arm_l", "forearm_l", "hand_l")
+twist_limit_degrees = 45.0
+swing_limit_degrees = 80.0
+stiffness = 0.7
+radius_ratio = 0.2
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_hcsne"]
+script = ExtResource("1_60xi8")
+chain_name = "arm_r"
+chain_type = 2
+parent_slot = "chest"
+slots = PackedStringArray("upper_arm_r", "forearm_r", "hand_r")
+twist_limit_degrees = 45.0
+swing_limit_degrees = 80.0
+stiffness = 0.7
+radius_ratio = 0.2
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_k85yc"]
+script = ExtResource("1_60xi8")
+chain_name = "leg_l"
+chain_type = 3
+parent_slot = "pelvis"
+slots = PackedStringArray("thigh_l", "shin_l", "foot_l")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 70.0
+stiffness = 0.4
+merge_tip_into_parent = true
+
+[sub_resource type="Resource" id="Resource_v0hdt"]
+script = ExtResource("1_60xi8")
+chain_name = "leg_r"
+chain_type = 3
+parent_slot = "pelvis"
+slots = PackedStringArray("thigh_r", "shin_r", "foot_r")
+twist_limit_degrees = 20.0
+swing_limit_degrees = 70.0
+stiffness = 0.4
+merge_tip_into_parent = true
+
+[resource]
+script = ExtResource("2_qnnnh")
+archetype_name = "Biped humanoid"
+chains = Array[ExtResource("1_60xi8")]([SubResource("Resource_nu72m"), SubResource("Resource_d4k11"), SubResource("Resource_pua3j"), SubResource("Resource_hcsne"), SubResource("Resource_k85yc"), SubResource("Resource_v0hdt")])
+symmetry = {
+"foot_l": "foot_r",
+"forearm_l": "forearm_r",
+"hand_l": "hand_r",
+"shin_l": "shin_r",
+"thigh_l": "thigh_r",
+"upper_arm_l": "upper_arm_r"
+}
+ground_contact_slots = PackedStringArray("foot_l", "foot_r")
