@@ -4,6 +4,7 @@ extends Node
 @export var actor_path: NodePath
 @export_range(0.01, 2.0, 0.01) var step_distance: float = 0.25
 @export_range(0.02, 2.0, 0.01) var step_time: float = 0.2
+@export_range(0.02, 1.0, 0.01) var min_step_time: float = 0.08
 @export_range(0.0, 1.0, 0.01) var step_height: float = 0.1
 @export_range(0.0, 1.0, 0.01) var velocity_lead: float = 0.15
 @export_range(0.0, 0.5, 0.005) var foot_height: float = 0.0
@@ -12,6 +13,7 @@ extends Node
 @export_range(1, 8) var groups: int = 2
 @export_range(0.05, 5.0, 0.05) var pole_lift: float = 0.5
 @export_range(0.0, 5.0, 0.05) var pole_out: float = 0.5
+@export_range(1.0, 4.0, 0.1) var overreach_ratio: float = 2.0
 
 var actor: RagdollActor
 var legs: Array[Leg] = []
@@ -19,6 +21,9 @@ var steps_taken: int = 0
 
 var _body: Node3D
 var _exclude: Array[RID] = []
+var _leg_radius: float = 0.0
+var _last_yaw: float = 0.0
+var _swing_time: float = 0.2
 
 
 class Leg:
@@ -33,6 +38,7 @@ class Leg:
 	var step_from: Vector3
 	var step_to: Vector3
 	var progress: float = 1.0
+	var swing_time: float = 0.2
 	var group: int = 0
 
 
@@ -54,6 +60,8 @@ func _setup() -> void:
 			continue
 		leg.group = (i + i / 2) % groups
 		legs.append(leg)
+		_leg_radius = maxf(_leg_radius, Vector2(leg.home_local.x, leg.home_local.z).length())
+	_last_yaw = _body.global_rotation.y
 
 
 func _make_leg(chain: RagdollChain) -> Leg:
@@ -141,29 +149,51 @@ func _physics_process(delta: float) -> void:
 	if _body is CharacterBody3D:
 		body_velocity = _body.velocity
 	body_velocity.y = 0.0
-	var swinging := -1
+	var yaw := _body.global_rotation.y
+	var speed := body_velocity.length() + absf(angle_difference(_last_yaw, yaw)) / delta * _leg_radius
+	_last_yaw = yaw
+	_swing_time = clampf(step_distance / maxf(speed, 0.001), min_step_time, step_time)
+	var group := _group_to_step(body_velocity, speed) if swinging_count() == 0 else -1
 	for leg in legs:
+		if leg.progress >= 1.0 and (leg.group == group or _overreached(leg, body_velocity)):
+			_start_step(leg, body_velocity)
 		if leg.progress < 1.0:
-			swinging = leg.group
-	for leg in legs:
-		if leg.progress < 1.0:
-			_advance(leg, delta)
-			continue
-		var desired := _ground(_body.to_global(leg.home_local) + body_velocity * velocity_lead)
-		if desired.distance_to(leg.planted) > step_distance and (swinging < 0 or swinging == leg.group):
-			swinging = leg.group
-			leg.step_from = leg.planted
-			leg.step_to = desired + body_velocity * step_time * 0.5
-			leg.planted = leg.step_to
-			leg.progress = 0.0
-			steps_taken += 1
 			_advance(leg, delta)
 		else:
 			_place(leg, leg.planted)
 
 
+func _desired(leg: Leg, body_velocity: Vector3) -> Vector3:
+	return _ground(_body.to_global(leg.home_local) + body_velocity * velocity_lead)
+
+
+func _overreached(leg: Leg, body_velocity: Vector3) -> bool:
+	return _desired(leg, body_velocity).distance_to(leg.planted) > step_distance * overreach_ratio
+
+
+func _group_to_step(body_velocity: Vector3, speed: float) -> int:
+	var worst_group := -1
+	var stride := speed * _swing_time
+	var worst_distance := minf(step_distance, maxf(stride * 0.5, step_distance * 0.2))
+	for leg in legs:
+		var distance := _desired(leg, body_velocity).distance_to(leg.planted)
+		if distance > worst_distance:
+			worst_distance = distance
+			worst_group = leg.group
+	return worst_group
+
+
+func _start_step(leg: Leg, body_velocity: Vector3) -> void:
+	leg.swing_time = _swing_time
+	leg.step_from = leg.planted
+	leg.step_to = _desired(leg, body_velocity) + body_velocity * leg.swing_time * 0.5
+	leg.planted = leg.step_to
+	leg.progress = 0.0
+	steps_taken += 1
+
+
 func _advance(leg: Leg, delta: float) -> void:
-	leg.progress = minf(leg.progress + delta / step_time, 1.0)
+	leg.progress = minf(leg.progress + delta / leg.swing_time, 1.0)
 	var lift := sin(leg.progress * PI) * step_height
 	_place(leg, leg.step_from.lerp(leg.step_to, leg.progress) + Vector3.UP * lift)
 

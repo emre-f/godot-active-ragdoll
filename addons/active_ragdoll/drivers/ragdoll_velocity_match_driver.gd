@@ -23,7 +23,7 @@ func drive(actor: RagdollActor, delta: float) -> void:
 	for i in bones.size():
 		var bone := bones[i]
 		var strength := bone.strength * scale * (root_strength if i == 0 else 1.0)
-		if strength <= 0.0:
+		if strength <= 0.0 or bone.freeze:
 			continue
 		var time := root_time if i == 0 else limb_time
 		var target := targets[i]

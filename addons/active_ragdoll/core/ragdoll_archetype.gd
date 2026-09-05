@@ -4,6 +4,7 @@ extends Resource
 @export var archetype_name: String = ""
 @export var root_slot: String = "pelvis"
 @export_range(0.05, 1.5, 0.01) var root_radius_ratio: float = 0.6
+@export var root_kinematic_when_driven: bool = false
 @export var chains: Array[RagdollChain] = []
 @export var symmetry: Dictionary = {}
 @export var ground_contact_slots: PackedStringArray = PackedStringArray()

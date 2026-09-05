@@ -25,6 +25,7 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [sub_resource type="Resource" id="Resource_7da5l"]
 script = ExtResource("1_vm66h")
@@ -37,6 +38,7 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [sub_resource type="Resource" id="Resource_58a1o"]
 script = ExtResource("1_vm66h")
@@ -49,6 +51,7 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [sub_resource type="Resource" id="Resource_bhpyn"]
 script = ExtResource("1_vm66h")
@@ -61,6 +64,7 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [sub_resource type="Resource" id="Resource_easuy"]
 script = ExtResource("1_vm66h")
@@ -73,6 +77,7 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [sub_resource type="Resource" id="Resource_nh7gl"]
 script = ExtResource("1_vm66h")
@@ -85,6 +90,7 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [sub_resource type="Resource" id="Resource_yxbx7"]
 script = ExtResource("1_vm66h")
@@ -97,6 +103,7 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [sub_resource type="Resource" id="Resource_71amc"]
 script = ExtResource("1_vm66h")
@@ -109,12 +116,14 @@ swing_limit_degrees = 90.0
 stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
+kinematic_when_driven = true
 
 [resource]
 script = ExtResource("2_rkmja")
 archetype_name = "Arachnid"
 root_slot = "cephalothorax"
 root_radius_ratio = 0.8
+root_kinematic_when_driven = true
 chains = Array[ExtResource("1_vm66h")]([SubResource("Resource_xfj33"), SubResource("Resource_uk1ci"), SubResource("Resource_7da5l"), SubResource("Resource_58a1o"), SubResource("Resource_bhpyn"), SubResource("Resource_easuy"), SubResource("Resource_nh7gl"), SubResource("Resource_yxbx7"), SubResource("Resource_71amc")])
 symmetry = {
 "leg1_l_coxa": "leg1_r_coxa",

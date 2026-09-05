@@ -12,6 +12,7 @@ enum ChainType { SPINE, NECK, ARM, LEG, TAIL }
 @export_range(0.0, 2.0, 0.05) var stiffness: float = 1.0
 @export_range(0.05, 1.5, 0.01) var radius_ratio: float = 0.22
 @export var merge_tip_into_parent: bool = false
+@export var kinematic_when_driven: bool = false
 
 
 func contains(slot: String) -> bool:

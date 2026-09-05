@@ -19,6 +19,7 @@ var strength_scale: float = 1.0
 var root_snap_enabled: bool = true
 
 var _free_bones: PackedInt32Array = PackedInt32Array()
+var _kinematic_bones: PackedByteArray = PackedByteArray()
 var _settled_ticks: int = 0
 var _has_settled: bool = false
 var _total_mass: float = 0.0
@@ -78,6 +79,7 @@ func _collect_bones() -> void:
 		target_velocities[i] = Vector3.ZERO
 		target_angular_velocities[i] = Vector3.ZERO
 	_free_bones = RagdollFreeBones.collect(skeleton, bones)
+	_kinematic_bones = RagdollKinematicBones.collect(bones, profile)
 
 
 func _apply_collision_rules() -> void:
@@ -101,39 +103,20 @@ func _process_modification_with_delta(_delta: float) -> void:
 	RagdollFreeBones.follow_root(skeleton, to_skeleton, bones[0], _free_bones)
 	for i in bones.size():
 		var bone := bones[i]
+		if bone.freeze:
+			continue
 		var pose := to_skeleton * bone.global_transform
 		pose.basis = pose.basis.orthonormalized()
 		skeleton.set_bone_global_pose(bone.bone_index, pose)
 
 
-func _measure_target_velocities(delta: float) -> void:
-	for i in bones.size():
-		var target := targets[i]
-		if _reset_target_velocity:
-			target_velocities[i] = Vector3.ZERO
-			target_angular_velocities[i] = Vector3.ZERO
-		else:
-			target_velocities[i] = (target.origin - _previous_targets[i].origin) / delta
-			target_angular_velocities[i] = _angular_step(_previous_targets[i].basis, target.basis) / delta
-		_previous_targets[i] = target
-	_reset_target_velocity = false
-
-
-static func _angular_step(from: Basis, to: Basis) -> Vector3:
-	var rotation := (to * from.inverse()).get_rotation_quaternion()
-	if rotation.w < 0.0:
-		rotation = -rotation
-	var angle := rotation.get_angle()
-	if angle < 0.0001:
-		return Vector3.ZERO
-	return rotation.get_axis().normalized() * angle
-
-
 func _physics_process(delta: float) -> void:
 	if bones.is_empty():
 		return
-	if drive_enabled and not is_limp and profile.driver != null:
-		_measure_target_velocities(delta)
+	var driven := drive_enabled and not is_limp and profile.driver != null
+	RagdollKinematicBones.update(self, _kinematic_bones, driven and strength_scale >= 1.0)
+	if driven:
+		_reset_target_velocity = RagdollTargetVelocity.measure(self, _previous_targets, delta, _reset_target_velocity)
 		profile.driver.drive(self, delta)
 	if is_limp:
 		_update_settle()
