@@ -6,9 +6,11 @@ extends Node
 @export_range(0.02, 2.0, 0.01) var step_time: float = 0.2
 @export_range(0.0, 1.0, 0.01) var step_height: float = 0.1
 @export_range(0.0, 1.0, 0.01) var velocity_lead: float = 0.15
+@export_range(0.0, 0.5, 0.005) var foot_height: float = 0.0
 @export_range(0.0, 3.0, 0.01) var ground_probe_depth: float = 0.6
 @export_flags_3d_physics var ground_mask: int = 1
 @export_range(1, 8) var groups: int = 2
+@export_range(0.05, 5.0, 0.05) var pole_lift: float = 0.5
 
 var actor: RagdollActor
 var legs: Array[Leg] = []
@@ -21,6 +23,10 @@ var _exclude: Array[RID] = []
 class Leg:
 	var chain: RagdollChain
 	var target: Node3D
+	var pole: Node3D
+	var tibia_body: int
+	var foot_shift_local: Vector3
+	var pole_local: Vector3
 	var home_local: Vector3
 	var planted: Vector3
 	var step_from: Vector3
@@ -39,38 +45,93 @@ func _ready() -> void:
 
 
 func _setup() -> void:
-	var skeleton := actor.get_skeleton()
 	_exclude = RagdollIKSupport.exclusions(actor)
 	var chains := RagdollIKSupport.chains_of_type(actor, RagdollChain.ChainType.LEG)
 	for i in chains.size():
-		var chain := chains[i]
-		var names := RagdollIKSupport.bone_names(actor, chain)
-		var tip := skeleton.find_bone(names[names.size() - 1])
-		if tip < 0 or names.size() < 2:
+		var leg := _make_leg(chains[i])
+		if leg == null:
 			continue
-		var length := RagdollIKSupport.tip_length(skeleton, tip)
-		var leg := Leg.new()
-		leg.chain = chain
 		leg.group = (i + i / 2) % groups
-		leg.target = RagdollIKSupport.make_target(actor, "StepTarget_" + chain.chain_name)
-		var tip_world := (skeleton.global_transform * skeleton.get_bone_global_rest(tip) * Vector3(0.0, length, 0.0))
-		leg.home_local = _body.to_local(tip_world)
-		leg.planted = _ground(tip_world)
-		leg.target.global_position = leg.planted
-		var ik := FABRIK3D.new()
-		ik.setting_count = 1
-		ik.set_root_bone_name(0, names[0])
-		ik.set_end_bone_name(0, names[names.size() - 1])
+		legs.append(leg)
+
+
+func _make_leg(chain: RagdollChain) -> Leg:
+	var skeleton := actor.get_skeleton()
+	var names := RagdollIKSupport.bone_names(actor, chain)
+	if names.size() < 2:
+		return null
+	var knee := skeleton.find_bone(names[names.size() - 2])
+	var tibia := skeleton.find_bone(names[names.size() - 1])
+	if knee < 0 or tibia < 0:
+		return null
+	var leg := Leg.new()
+	leg.chain = chain
+	leg.tibia_body = _body_index(tibia)
+	var tibia_rest := skeleton.get_bone_global_rest(tibia)
+	var children := skeleton.get_bone_children(tibia)
+	var ik := TwoBoneIK3D.new()
+	ik.setting_count = 1
+	ik.set_root_bone_name(0, names[names.size() - 2])
+	ik.set_middle_bone_name(0, names[names.size() - 1])
+	var ankle_local := Vector3.ZERO
+	if children.is_empty():
+		ankle_local = Vector3(0.0, RagdollIKSupport.tip_length(skeleton, tibia), 0.0)
+		ik.set_use_virtual_end(0, true)
 		ik.set_extend_end_bone(0, true)
 		ik.set_end_bone_direction(0, SkeletonModifier3D.BONE_DIRECTION_PLUS_Y)
-		ik.set_end_bone_length(0, length)
-		RagdollIKSupport.insert_modifier(actor, ik, "StepIK_" + chain.chain_name)
-		ik.set_target_node(0, ik.get_path_to(leg.target))
-		legs.append(leg)
+		ik.set_end_bone_length(0, ankle_local.y)
+	else:
+		ik.set_end_bone(0, children[0])
+		ankle_local = skeleton.get_bone_rest(children[0]).origin
+	var leaf_local := tibia_rest.affine_inverse() * skeleton.get_bone_global_rest(_leaf_below(skeleton, tibia)).origin
+	leg.foot_shift_local = leaf_local - ankle_local
+	var to_world := skeleton.global_transform
+	var foot_world := to_world * tibia_rest * leaf_local
+	var knee_world := to_world * skeleton.get_bone_global_rest(tibia).origin
+	leg.home_local = _body.to_local(foot_world)
+	leg.pole_local = _body.to_local(knee_world + Vector3.UP * pole_lift)
+	leg.planted = _ground(foot_world)
+	leg.target = RagdollIKSupport.make_target(actor, "StepTarget_" + chain.chain_name)
+	leg.pole = RagdollIKSupport.make_target(actor, "StepPole_" + chain.chain_name)
+	RagdollIKSupport.insert_modifier(actor, ik, "StepIK_" + chain.chain_name)
+	ik.set_target_node(0, ik.get_path_to(leg.target))
+	ik.set_pole_node(0, ik.get_path_to(leg.pole))
+	_place(leg, leg.planted)
+	return leg
+
+
+func _body_index(bone_index: int) -> int:
+	for i in actor.bones.size():
+		if actor.bones[i].bone_index == bone_index:
+			return i
+	return -1
+
+
+static func _leaf_below(skeleton: Skeleton3D, bone_index: int) -> int:
+	var origin := skeleton.get_bone_global_rest(bone_index).origin
+	var best := bone_index
+	var best_distance := 0.0
+	var pending := Array(skeleton.get_bone_children(bone_index))
+	while not pending.is_empty():
+		var current: int = pending.pop_back()
+		pending.append_array(skeleton.get_bone_children(current))
+		var distance := origin.distance_to(skeleton.get_bone_global_rest(current).origin)
+		if distance > best_distance:
+			best_distance = distance
+			best = current
+	return best
 
 
 func _ground(from: Vector3) -> Vector3:
 	return RagdollIKSupport.ground_below(_body, from, ground_probe_depth, ground_mask, _exclude)
+
+
+func _place(leg: Leg, foot: Vector3) -> void:
+	var shift := Vector3.ZERO
+	if leg.tibia_body >= 0 and leg.tibia_body < actor.targets.size():
+		shift = actor.targets[leg.tibia_body].basis * leg.foot_shift_local
+	leg.target.global_position = foot + Vector3.UP * foot_height - shift
+	leg.pole.global_position = _body.to_global(leg.pole_local)
 
 
 func _physics_process(delta: float) -> void:
@@ -98,13 +159,13 @@ func _physics_process(delta: float) -> void:
 			steps_taken += 1
 			_advance(leg, delta)
 		else:
-			leg.target.global_position = leg.planted
+			_place(leg, leg.planted)
 
 
 func _advance(leg: Leg, delta: float) -> void:
 	leg.progress = minf(leg.progress + delta / step_time, 1.0)
 	var lift := sin(leg.progress * PI) * step_height
-	leg.target.global_position = leg.step_from.lerp(leg.step_to, leg.progress) + Vector3.UP * lift
+	_place(leg, leg.step_from.lerp(leg.step_to, leg.progress) + Vector3.UP * lift)
 
 
 func swinging_count() -> int:

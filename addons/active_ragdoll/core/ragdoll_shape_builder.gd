@@ -14,6 +14,8 @@ static func build(bone: RagdollBone, settings: RagdollSlotSettings, profile: Rag
 		radius = settings.radius
 	elif fitted_radius > 0.0:
 		radius = fitted_radius
+	if settings.radius <= 0.0 and profile.is_tip_slot(bone.slot):
+		radius *= profile.tip_radius_scale
 	radius = maxf(radius, 0.01)
 	var shape_node := CollisionShape3D.new()
 	shape_node.name = SHAPE_NAME

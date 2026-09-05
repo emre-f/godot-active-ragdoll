@@ -12,6 +12,7 @@ extends Resource
 @export_flags_3d_physics var collision_layer: int = 1
 @export_flags_3d_physics var collision_mask: int = 1
 @export_range(0.0, 2.0, 0.01) var tip_length_ratio: float = 0.6
+@export_range(0.1, 1.0, 0.05) var tip_radius_scale: float = 0.6
 @export_range(0.0, 20.0, 0.1) var linear_damp: float = 0.5
 @export_range(0.0, 20.0, 0.1) var angular_damp: float = 2.0
 @export var continuous_collision: bool = true
@@ -59,6 +60,11 @@ func radius_ratio_for(slot: String) -> float:
 		return archetype.root_radius_ratio
 	var chain := archetype.chain_for_slot(slot)
 	return chain.radius_ratio if chain != null else 0.22
+
+
+func is_tip_slot(slot: String) -> bool:
+	var chain := archetype.chain_for_slot(slot) if archetype != null else null
+	return chain != null and chain.slots.size() >= 2 and chain.tip_slot() == slot
 
 
 func stiffness_for(slot: String) -> float:

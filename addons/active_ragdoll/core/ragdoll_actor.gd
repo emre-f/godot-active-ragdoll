@@ -11,7 +11,8 @@ signal settled
 var bones: Array[RagdollBone] = []
 var targets: Array[Transform3D] = []
 var target_velocities: PackedVector3Array = PackedVector3Array()
-var _previous_targets: PackedVector3Array = PackedVector3Array()
+var target_angular_velocities: PackedVector3Array = PackedVector3Array()
+var _previous_targets: Array[Transform3D] = []
 var drive_enabled: bool = true
 var is_limp: bool = false
 var strength_scale: float = 1.0
@@ -70,10 +71,12 @@ func _collect_bones() -> void:
 			_total_mass += child.mass
 	targets.resize(bones.size())
 	target_velocities.resize(bones.size())
+	target_angular_velocities.resize(bones.size())
 	_previous_targets.resize(bones.size())
 	for i in bones.size():
 		targets[i] = bones[i].global_transform
 		target_velocities[i] = Vector3.ZERO
+		target_angular_velocities[i] = Vector3.ZERO
 	_free_bones = RagdollFreeBones.collect(skeleton, bones)
 
 
@@ -105,10 +108,25 @@ func _process_modification_with_delta(_delta: float) -> void:
 
 func _measure_target_velocities(delta: float) -> void:
 	for i in bones.size():
-		var origin := targets[i].origin
-		target_velocities[i] = Vector3.ZERO if _reset_target_velocity else (origin - _previous_targets[i]) / delta
-		_previous_targets[i] = origin
+		var target := targets[i]
+		if _reset_target_velocity:
+			target_velocities[i] = Vector3.ZERO
+			target_angular_velocities[i] = Vector3.ZERO
+		else:
+			target_velocities[i] = (target.origin - _previous_targets[i].origin) / delta
+			target_angular_velocities[i] = _angular_step(_previous_targets[i].basis, target.basis) / delta
+		_previous_targets[i] = target
 	_reset_target_velocity = false
+
+
+static func _angular_step(from: Basis, to: Basis) -> Vector3:
+	var rotation := (to * from.inverse()).get_rotation_quaternion()
+	if rotation.w < 0.0:
+		rotation = -rotation
+	var angle := rotation.get_angle()
+	if angle < 0.0001:
+		return Vector3.ZERO
+	return rotation.get_axis().normalized() * angle
 
 
 func _physics_process(delta: float) -> void:
