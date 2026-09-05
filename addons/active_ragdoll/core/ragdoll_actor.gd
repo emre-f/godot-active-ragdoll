@@ -20,6 +20,7 @@ var root_snap_enabled: bool = true
 
 var _free_bones: PackedInt32Array = PackedInt32Array()
 var _kinematic_bones: PackedByteArray = PackedByteArray()
+var _write_order: PackedInt32Array = PackedInt32Array()
 var _settled_ticks: int = 0
 var _has_settled: bool = false
 var _total_mass: float = 0.0
@@ -80,6 +81,7 @@ func _collect_bones() -> void:
 		target_angular_velocities[i] = Vector3.ZERO
 	_free_bones = RagdollFreeBones.collect(skeleton, bones)
 	_kinematic_bones = RagdollKinematicBones.collect(bones, profile)
+	_write_order = RagdollFreeBones.hierarchy_order(skeleton, bones)
 
 
 func _apply_collision_rules() -> void:
@@ -101,11 +103,9 @@ func _process_modification_with_delta(_delta: float) -> void:
 		if capture_targets:
 			targets[i] = skeleton.global_transform * skeleton.get_bone_global_pose(bone.bone_index)
 	RagdollFreeBones.follow_root(skeleton, to_skeleton, bones[0], _free_bones)
-	for i in bones.size():
+	for i in _write_order:
 		var bone := bones[i]
-		if bone.freeze:
-			continue
-		var pose := to_skeleton * bone.global_transform
+		var pose := to_skeleton * (targets[i] if bone.freeze else bone.global_transform)
 		pose.basis = pose.basis.orthonormalized()
 		skeleton.set_bone_global_pose(bone.bone_index, pose)
 
@@ -160,6 +160,7 @@ func knock(impulse: Vector3, source: Node = null) -> void:
 func go_limp() -> void:
 	is_limp = true
 	drive_enabled = false
+	RagdollKinematicBones.update(self, _kinematic_bones, false)
 	_settled_ticks = 0
 	_has_settled = false
 	_set_sleep_allowed(true)

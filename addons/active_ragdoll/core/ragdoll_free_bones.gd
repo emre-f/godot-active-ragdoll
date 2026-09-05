@@ -29,3 +29,17 @@ static func follow_root(skeleton: Skeleton3D, to_skeleton: Transform3D, root: Ra
 	var delta := physics_root * animated_root.affine_inverse()
 	for bone_index in free_bones:
 		skeleton.set_bone_global_pose(bone_index, delta * skeleton.get_bone_global_pose(bone_index))
+
+
+static func hierarchy_order(skeleton: Skeleton3D, bones: Array[RagdollBone]) -> PackedInt32Array:
+	var depths := PackedInt32Array()
+	for bone in bones:
+		var depth := 0
+		var current := skeleton.get_bone_parent(bone.bone_index)
+		while current >= 0:
+			depth += 1
+			current = skeleton.get_bone_parent(current)
+		depths.append(depth)
+	var order := range(bones.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return depths[a] < depths[b])
+	return PackedInt32Array(order)
