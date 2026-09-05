@@ -3,7 +3,7 @@ extends CharacterBody3D
 
 signal state_changed(old_state: State, new_state: State)
 
-enum State { DRIVEN, KNOCKED, SETTLING, RECOVERING }
+enum State { DRIVEN, KNOCKED, SETTLING, RECOVERING, DEAD }
 
 @export var actor_path: NodePath
 @export var model_forward: Vector3 = Vector3.BACK
@@ -12,6 +12,7 @@ enum State { DRIVEN, KNOCKED, SETTLING, RECOVERING }
 @export_range(0.0, 30.0, 0.1) var run_speed: float = 6.0
 @export_range(0.0, 200.0, 1.0) var acceleration: float = 25.0
 @export_range(0.0, 50.0, 0.1) var turn_speed: float = 12.0
+@export_range(0.5, 50.0, 0.1) var max_turn_rate: float = 6.0
 @export_range(0.0, 20.0, 0.1) var jump_speed: float = 4.5
 @export_group("Capsule")
 @export var auto_capsule: bool = true
@@ -93,6 +94,9 @@ func _physics_process(delta: float) -> void:
 			_follow_root()
 			if _state_time >= rest_time:
 				_enter(State.RECOVERING)
+		State.DEAD:
+			if not actor.is_baked:
+				_follow_root()
 		State.RECOVERING:
 			_stand(delta)
 			var progress := clampf(_state_time / get_up_time, 0.0, 1.0)
@@ -129,7 +133,8 @@ func _turn_toward(direction: Vector3, delta: float) -> void:
 	if direction.length_squared() < 0.0001:
 		return
 	var target_yaw := atan2(direction.x, direction.z) - atan2(model_forward.x, model_forward.z)
-	rotation.y = lerp_angle(rotation.y, target_yaw, 1.0 - exp(-turn_speed * delta))
+	var step := wrapf(lerp_angle(rotation.y, target_yaw, 1.0 - exp(-turn_speed * delta)) - rotation.y, -PI, PI)
+	rotation.y += clampf(step, -max_turn_rate * delta, max_turn_rate * delta)
 
 
 func _follow_root() -> void:
@@ -142,7 +147,7 @@ func _enter(new_state: State) -> void:
 	state = new_state
 	_state_time = 0.0
 	match new_state:
-		State.KNOCKED:
+		State.KNOCKED, State.DEAD:
 			velocity = Vector3.ZERO
 			_set_capsule_enabled(false)
 		State.RECOVERING:
@@ -166,6 +171,8 @@ func _set_capsule_enabled(enabled: bool) -> void:
 		collision_layer = _saved_layer
 		collision_mask = _saved_mask
 		return
+	if collision_layer == 0 and collision_mask == 0:
+		return
 	_saved_layer = collision_layer
 	_saved_mask = collision_mask
 	collision_layer = 0
@@ -174,13 +181,31 @@ func _set_capsule_enabled(enabled: bool) -> void:
 
 func knock(impulse: Vector3, source: Node = null) -> void:
 	if state != State.DRIVEN:
-		actor.root_bone().apply_central_impulse(impulse)
+		if not actor.is_baked:
+			actor.root_bone().apply_central_impulse(impulse)
 		return
 	actor.knock(impulse, source)
 	_enter(State.KNOCKED)
 
 
+func kill(impulse: Vector3 = Vector3.ZERO, source: Node = null) -> void:
+	if state == State.DEAD:
+		return
+	actor.bake_when_settled = true
+	if state == State.DRIVEN or not actor.is_limp:
+		actor.knock(impulse, source)
+	elif not actor.is_baked:
+		actor.root_bone().apply_central_impulse(impulse)
+	_enter(State.DEAD)
+
+
+func is_dead() -> bool:
+	return state == State.DEAD
+
+
 func hit(impulse: Vector3, source: Node = null, slot: String = "") -> void:
+	if actor.is_baked:
+		return
 	if impulse.length() >= knock_impulse_threshold * actor.total_mass():
 		knock(impulse, source)
 		return

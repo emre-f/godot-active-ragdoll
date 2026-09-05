@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3 uid="uid://c7lodoverlay01"]
+
+[ext_resource type="Script" path="res://addons/active_ragdoll/lod/ragdoll_lod_overlay.gd" id="1_overlay"]
+
+[node name="RagdollLODOverlay" type="CanvasLayer"]
+layer = 50
+script = ExtResource("1_overlay")
+
+[node name="Label" type="Label" parent="."]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 616.0
+offset_bottom = 120.0
+theme_override_colors/font_color = Color(0.752941, 0.796078, 0.862745, 1)
+theme_override_colors/font_shadow_color = Color(0.0941176, 0.0784314, 0.145098, 1)
+theme_override_font_sizes/font_size = 16
+text = "RagdollLODOverlay"
