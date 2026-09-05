@@ -11,6 +11,7 @@ extends Node
 @export_flags_3d_physics var ground_mask: int = 1
 @export_range(1, 8) var groups: int = 2
 @export_range(0.05, 5.0, 0.05) var pole_lift: float = 0.5
+@export_range(0.0, 5.0, 0.05) var pole_out: float = 0.5
 
 var actor: RagdollActor
 var legs: Array[Leg] = []
@@ -25,7 +26,7 @@ class Leg:
 	var target: Node3D
 	var pole: Node3D
 	var tibia_body: int
-	var foot_shift_local: Vector3
+	var foot_shift_body: Vector3
 	var pole_local: Vector3
 	var home_local: Vector3
 	var planted: Vector3
@@ -84,12 +85,14 @@ func _make_leg(chain: RagdollChain) -> Leg:
 		ik.set_end_bone(0, children[0])
 		ankle_local = skeleton.get_bone_rest(children[0]).origin
 	var leaf_local := tibia_rest.affine_inverse() * skeleton.get_bone_global_rest(_leaf_below(skeleton, tibia)).origin
-	leg.foot_shift_local = leaf_local - ankle_local
 	var to_world := skeleton.global_transform
+	leg.foot_shift_body = _body.global_transform.basis.inverse() * (to_world.basis * tibia_rest.basis * (leaf_local - ankle_local))
 	var foot_world := to_world * tibia_rest * leaf_local
 	var knee_world := to_world * skeleton.get_bone_global_rest(tibia).origin
 	leg.home_local = _body.to_local(foot_world)
-	leg.pole_local = _body.to_local(knee_world + Vector3.UP * pole_lift)
+	var outward := knee_world - _body.global_position
+	outward.y = 0.0
+	leg.pole_local = _body.to_local(knee_world + outward.normalized() * pole_out + Vector3.UP * pole_lift)
 	leg.planted = _ground(foot_world)
 	leg.target = RagdollIKSupport.make_target(actor, "StepTarget_" + chain.chain_name)
 	leg.pole = RagdollIKSupport.make_target(actor, "StepPole_" + chain.chain_name)
@@ -127,10 +130,7 @@ func _ground(from: Vector3) -> Vector3:
 
 
 func _place(leg: Leg, foot: Vector3) -> void:
-	var shift := Vector3.ZERO
-	if leg.tibia_body >= 0 and leg.tibia_body < actor.targets.size():
-		shift = actor.targets[leg.tibia_body].basis * leg.foot_shift_local
-	leg.target.global_position = foot + Vector3.UP * foot_height - shift
+	leg.target.global_position = foot + Vector3.UP * foot_height - _body.global_transform.basis * leg.foot_shift_body
 	leg.pole.global_position = _body.to_global(leg.pole_local)
 
 

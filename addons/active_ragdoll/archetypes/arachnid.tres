@@ -22,7 +22,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg1_l_coxa", "leg1_l_femur", "leg1_l_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
@@ -34,7 +34,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg1_r_coxa", "leg1_r_femur", "leg1_r_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
@@ -46,7 +46,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg2_l_coxa", "leg2_l_femur", "leg2_l_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
@@ -58,7 +58,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg2_r_coxa", "leg2_r_femur", "leg2_r_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
@@ -70,7 +70,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg3_l_coxa", "leg3_l_femur", "leg3_l_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
@@ -82,7 +82,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg3_r_coxa", "leg3_r_femur", "leg3_r_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
@@ -94,7 +94,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg4_l_coxa", "leg4_l_femur", "leg4_l_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
@@ -106,7 +106,7 @@ parent_slot = "cephalothorax"
 slots = PackedStringArray("leg4_r_coxa", "leg4_r_femur", "leg4_r_tibia")
 twist_limit_degrees = 30.0
 swing_limit_degrees = 90.0
-stiffness = 0.5
+stiffness = 1.0
 radius_ratio = 0.12
 merge_tip_into_parent = true
 
