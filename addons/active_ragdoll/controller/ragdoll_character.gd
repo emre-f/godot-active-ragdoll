@@ -31,6 +31,9 @@ var move_input: Vector3 = Vector3.ZERO
 var face_direction: Vector3 = Vector3.ZERO
 var running: bool = false
 var jump_requested: bool = false
+var speed_scale: float = 1.0
+var crouch_speed_scale: float = 1.0
+var drag_velocity: Vector3 = Vector3.ZERO
 
 var _gravity: float = 9.8
 var _state_time: float = 0.0
@@ -106,35 +109,47 @@ func _physics_process(delta: float) -> void:
 
 
 func _move(delta: float) -> void:
-	var wish := Vector3(move_input.x, 0.0, move_input.z).limit_length(1.0)
-	var target_speed := run_speed if running else walk_speed
-	var horizontal := Vector3(velocity.x, 0.0, velocity.z).move_toward(wish * target_speed, acceleration * delta)
-	velocity.x = horizontal.x
-	velocity.z = horizontal.z
+	var up := up_direction
+	var wish := _surface_wish(up)
+	var target_speed := (run_speed if running else walk_speed) * speed_scale * crouch_speed_scale
+	var rise := velocity.dot(up)
+	var lateral := (velocity - up * rise).move_toward(wish * target_speed + drag_velocity, acceleration * delta)
 	if is_on_floor():
 		if jump_requested:
-			velocity.y = jump_speed
+			rise = jump_speed
 	else:
-		velocity.y -= _gravity * delta
+		rise -= _gravity * delta
+	velocity = lateral + up * rise
 	jump_requested = false
 	move_and_slide()
 	_turn_toward(face_direction if face_direction.length_squared() > 0.0001 else wish, delta)
 
 
+func _surface_wish(up: Vector3) -> Vector3:
+	var into_surface := -move_input.dot(up)
+	var wish := move_input + up * into_surface
+	var slope_up := Vector3.UP - up * up.y
+	if slope_up.length_squared() > 0.0001:
+		wish += slope_up.normalized() * into_surface
+	return wish.limit_length(1.0)
+
+
 func _stand(delta: float) -> void:
-	velocity.x = 0.0
-	velocity.z = 0.0
+	var rise := velocity.dot(up_direction)
 	if not is_on_floor():
-		velocity.y -= _gravity * delta
+		rise -= _gravity * delta
+	velocity = up_direction * rise
 	move_and_slide()
 
 
 func _turn_toward(direction: Vector3, delta: float) -> void:
-	if direction.length_squared() < 0.0001:
+	var up := global_basis.y
+	var flat := direction - up * direction.dot(up)
+	if flat.length_squared() < 0.0001:
 		return
-	var target_yaw := atan2(direction.x, direction.z) - atan2(model_forward.x, model_forward.z)
-	var step := wrapf(lerp_angle(rotation.y, target_yaw, 1.0 - exp(-turn_speed * delta)) - rotation.y, -PI, PI)
-	rotation.y += clampf(step, -max_turn_rate * delta, max_turn_rate * delta)
+	var facing := global_basis * model_forward
+	var step := facing.signed_angle_to(flat, up) * (1.0 - exp(-turn_speed * delta))
+	global_basis = global_basis.rotated(up, clampf(step, -max_turn_rate * delta, max_turn_rate * delta)).orthonormalized()
 
 
 func _follow_root() -> void:

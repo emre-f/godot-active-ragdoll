@@ -22,7 +22,7 @@ var steps_taken: int = 0
 var _body: Node3D
 var _exclude: Array[RID] = []
 var _leg_radius: float = 0.0
-var _last_yaw: float = 0.0
+var _last_forward: Vector3 = Vector3.BACK
 var _swing_time: float = 0.2
 
 
@@ -61,7 +61,7 @@ func _setup() -> void:
 		leg.group = (i + i / 2) % groups
 		legs.append(leg)
 		_leg_radius = maxf(_leg_radius, Vector2(leg.home_local.x, leg.home_local.z).length())
-	_last_yaw = _body.global_rotation.y
+	_last_forward = _body.global_basis.z
 
 
 func _make_leg(chain: RagdollChain) -> Leg:
@@ -134,11 +134,15 @@ static func _leaf_below(skeleton: Skeleton3D, bone_index: int) -> int:
 
 
 func _ground(from: Vector3) -> Vector3:
-	return RagdollIKSupport.ground_below(_body, from, ground_probe_depth, ground_mask, _exclude)
+	return RagdollIKSupport.ground_below(_body, from, ground_probe_depth, ground_mask, _exclude, up())
+
+
+func up() -> Vector3:
+	return _body.global_basis.y
 
 
 func _place(leg: Leg, foot: Vector3) -> void:
-	leg.target.global_position = foot + Vector3.UP * foot_height - _body.global_transform.basis * leg.foot_shift_body
+	leg.target.global_position = foot + up() * foot_height - _body.global_transform.basis * leg.foot_shift_body
 	leg.pole.global_position = _body.to_global(leg.pole_local)
 
 
@@ -148,10 +152,10 @@ func _physics_process(delta: float) -> void:
 	var body_velocity := Vector3.ZERO
 	if _body is CharacterBody3D:
 		body_velocity = _body.velocity
-	body_velocity.y = 0.0
-	var yaw := _body.global_rotation.y
-	var speed := body_velocity.length() + absf(angle_difference(_last_yaw, yaw)) / delta * _leg_radius
-	_last_yaw = yaw
+	body_velocity -= up() * body_velocity.dot(up())
+	var forward := _body.global_basis.z
+	var speed := body_velocity.length() + _last_forward.angle_to(forward) / delta * _leg_radius
+	_last_forward = forward
 	_swing_time = clampf(step_distance / maxf(speed, 0.001), min_step_time, step_time)
 	var group := _group_to_step(body_velocity, speed) if swinging_count() == 0 else -1
 	for leg in legs:
@@ -195,7 +199,7 @@ func _start_step(leg: Leg, body_velocity: Vector3) -> void:
 func _advance(leg: Leg, delta: float) -> void:
 	leg.progress = minf(leg.progress + delta / leg.swing_time, 1.0)
 	var lift := sin(leg.progress * PI) * step_height
-	_place(leg, leg.step_from.lerp(leg.step_to, leg.progress) + Vector3.UP * lift)
+	_place(leg, leg.step_from.lerp(leg.step_to, leg.progress) + up() * lift)
 
 
 func swinging_count() -> int:

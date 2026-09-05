@@ -89,3 +89,18 @@ static func volume(bone: RagdollBone) -> float:
 	if shape is SphereShape3D:
 		return 4.0 / 3.0 * PI * pow(shape.radius, 3)
 	return 0.001
+
+
+static func set_debug_visible(actor: RagdollActor, visible: bool) -> void:
+	for bone in actor.bones:
+		var mesh := bone.get_node_or_null(DEBUG_MESH_NAME)
+		if mesh != null:
+			mesh.visible = visible
+
+
+static func debug_visible(actor: RagdollActor) -> bool:
+	for bone in actor.bones:
+		var mesh := bone.get_node_or_null(DEBUG_MESH_NAME)
+		if mesh != null:
+			return mesh.visible
+	return false

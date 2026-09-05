@@ -10,6 +10,11 @@ static func follow(sync: RagdollNetSync, delta: float) -> void:
 		return
 	var target := sync.buffer.sample(Time.get_ticks_msec() / 1000.0 - sync.interpolation_delay)
 	coerce_state(sync, latest.state)
+	if sync.grab != null:
+		sync.grab.hold = latest.hold
+		sync.grab.aim_pitch = target.aim_pitch
+	if sync.crouch != null:
+		sync.crouch.crouching = latest.crouching
 	var character := sync.character
 	if character.state == State.DRIVEN:
 		unpin_root(sync)

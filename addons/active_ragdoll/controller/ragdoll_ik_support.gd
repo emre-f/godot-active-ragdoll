@@ -71,9 +71,9 @@ static func bone_world_position(skeleton: Skeleton3D, bone_index: int) -> Vector
 	return (skeleton.global_transform * skeleton.get_bone_global_pose(bone_index)).origin
 
 
-static func ground_below(node: Node3D, from: Vector3, depth: float, mask: int, exclude: Array[RID]) -> Vector3:
+static func ground_below(node: Node3D, from: Vector3, depth: float, mask: int, exclude: Array[RID], up: Vector3 = Vector3.UP) -> Vector3:
 	var space := node.get_world_3d().direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(from + Vector3.UP * depth, from - Vector3.UP * depth, mask, exclude)
+	var query := PhysicsRayQueryParameters3D.create(from + up * depth, from - up * depth, mask, exclude)
 	var hit := space.intersect_ray(query)
 	if hit.is_empty():
 		return from
