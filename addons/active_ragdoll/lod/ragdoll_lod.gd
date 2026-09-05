@@ -14,15 +14,24 @@ static func apply(actor: RagdollActor, tier: Tier) -> void:
 	actor.drive_interval = 2 if tier == Tier.T1_REDUCED else 1
 	match tier:
 		Tier.T3_DORMANT:
-			_set_bodies_dynamic(actor, false, false)
+			_park_bodies(actor, false)
 		Tier.T2_KINEMATIC:
-			_set_bodies_dynamic(actor, false, actor.profile.lod_kinematic_collision)
+			_park_bodies(actor, actor.profile.lod_kinematic_collision)
 		_:
-			if old_tier >= Tier.T2_KINEMATIC:
+			if actor.is_released:
+				actor.build_bodies()
+			elif old_tier >= Tier.T2_KINEMATIC:
 				_set_bodies_dynamic(actor, true, true)
 				actor.snap_to_skeleton()
 	actor.apply_animation_lod(tier)
 	actor.lod_tier_changed.emit(old_tier, tier)
+
+
+static func _park_bodies(actor: RagdollActor, collides: bool) -> void:
+	if actor.profile.lod_kinematic_collision:
+		_set_bodies_dynamic(actor, false, collides)
+	else:
+		actor.release_bodies()
 
 
 static func _set_bodies_dynamic(actor: RagdollActor, dynamic: bool, collides: bool) -> void:

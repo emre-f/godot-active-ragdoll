@@ -5,6 +5,8 @@ signal knocked(impulse: Vector3, source: Node)
 signal settled
 signal lod_tier_changed(old_tier: int, new_tier: int)
 signal baked
+signal bodies_built
+signal bodies_released
 
 const GROUP := "ragdoll_actors"
 
@@ -27,6 +29,7 @@ var drive_interval: int = 1
 var kinematic_interval: int = 1
 var bake_when_settled: bool = false
 var is_baked: bool = false
+var is_released: bool = false
 
 var _free_bones: PackedInt32Array = PackedInt32Array()
 var _kinematic_bones: PackedByteArray = PackedByteArray()
@@ -34,6 +37,7 @@ var _all_kinematic: PackedByteArray = PackedByteArray()
 var _write_order: PackedInt32Array = PackedInt32Array()
 var _settle := RagdollSettleTracker.new()
 var _animation_lod := RagdollAnimationLOD.new()
+var _body_cache := RagdollBodyCache.new()
 var _total_mass: float = 0.0
 var _reset_target_velocity: bool = true
 var _drive_tick: int = 0
@@ -56,6 +60,11 @@ func _ready() -> void:
 		go_limp()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_body_cache.free_all()
+
+
 func detach_bones() -> void:
 	bones.clear()
 	targets.clear()
@@ -64,73 +73,65 @@ func detach_bones() -> void:
 func refresh() -> void:
 	RagdollActorSetup.collect_bones(self)
 	RagdollActorSetup.apply_collision_rules(self)
+	_attach_bones()
+	RagdollActorSetup.rebind_joints(self)
+
+
+func _attach_bones() -> void:
 	if profile.driver != null:
 		profile.driver.on_attached(self)
 	_set_sleep_allowed(is_limp or profile.driver == null)
 	snap_to_skeleton()
-	RagdollActorSetup.rebind_joints(self)
+
+
+func release_bodies() -> void:
+	if is_released or bones.is_empty():
+		return
+	_body_cache.release(self)
+	is_released = true
+	bodies_released.emit()
+
+
+func build_bodies() -> void:
+	if not is_released:
+		return
+	is_released = false
+	_body_cache.restore(self)
+	_attach_bones()
+	var driven := drive_enabled and not is_limp and profile.driver != null
+	RagdollKinematicBones.update(self, _kinematic_bones, driven and strength_scale >= 1.0)
+	_drive_tick = 0
+	bodies_built.emit()
+
+
+func ensure_bodies() -> void:
+	if lod_tier >= RagdollLOD.Tier.T2_KINEMATIC:
+		RagdollLOD.apply(self, RagdollLOD.Tier.T1_REDUCED)
+
+
+func has_ragdoll() -> bool:
+	return not bones.is_empty() or is_released
 
 
 func _process_modification_with_delta(_delta: float) -> void:
 	var skeleton := get_skeleton()
-	if skeleton == null or bones.is_empty() or lod_tier == RagdollLOD.Tier.T3_DORMANT:
+	if skeleton == null:
 		return
-	var to_skeleton := skeleton.global_transform.affine_inverse()
-	var capture_targets := not is_limp
-	for i in bones.size():
-		var bone := bones[i]
-		if capture_targets:
-			targets[i] = skeleton.global_transform * skeleton.get_bone_global_pose(bone.bone_index)
-	if capture_targets and lod_tier == RagdollLOD.Tier.T2_KINEMATIC:
-		return
-	RagdollFreeBones.follow_root(skeleton, to_skeleton, bones[0], _free_bones)
-	for i in _write_order:
-		var bone := bones[i]
-		var pose := to_skeleton * (targets[i] if bone.freeze else bone.global_transform)
-		pose.basis = pose.basis.orthonormalized()
-		skeleton.set_bone_global_pose(bone.bone_index, pose)
+	if not bones.is_empty() and lod_tier != RagdollLOD.Tier.T3_DORMANT:
+		RagdollActorUpdate.write_pose(self, skeleton)
 	if _bake_requested:
 		_bake_requested = false
 		RagdollBaker.bake(self, skeleton)
 
 
 func _physics_process(delta: float) -> void:
-	if bones.is_empty() or lod_tier == RagdollLOD.Tier.T3_DORMANT:
+	if profile == null or is_baked or lod_tier == RagdollLOD.Tier.T3_DORMANT:
 		return
-	var driven := drive_enabled and not is_limp and profile.driver != null
-	if driven and lod_tier == RagdollLOD.Tier.T2_KINEMATIC:
-		_drive_tick += 1
-		if _drive_tick >= kinematic_interval:
-			_drive_tick = 0
-			RagdollKinematicBones.update(self, _all_kinematic, true)
-			_animation_lod.advance(delta * kinematic_interval)
-		_reset_target_velocity = true
-		return
-	RagdollKinematicBones.update(self, _kinematic_bones, driven and strength_scale >= 1.0)
-	if driven:
-		_drive_tick += 1
-		if _drive_tick >= drive_interval:
-			_drive_tick = 0
-			var step := delta * drive_interval
-			_reset_target_velocity = RagdollTargetVelocity.measure(self, _previous_targets, step, _reset_target_velocity)
-			profile.driver.drive(self, step)
-	if is_limp and _settle.update(self, delta):
-		settled.emit()
+	RagdollActorUpdate.physics(self, delta)
 
 
 func snap_to_skeleton() -> void:
-	var skeleton := get_skeleton()
-	if skeleton == null:
-		return
-	for i in bones.size():
-		var bone := bones[i]
-		var pose := skeleton.global_transform * skeleton.get_bone_global_pose(bone.bone_index)
-		pose.basis = pose.basis.orthonormalized()
-		bone.global_transform = pose
-		bone.linear_velocity = Vector3.ZERO
-		bone.angular_velocity = Vector3.ZERO
-		targets[i] = pose
-	_reset_target_velocity = true
+	RagdollActorUpdate.snap_to_skeleton(self)
 
 
 func knock(impulse: Vector3, source: Node = null) -> void:
@@ -144,8 +145,7 @@ func knock(impulse: Vector3, source: Node = null) -> void:
 func go_limp() -> void:
 	if is_baked:
 		return
-	if lod_tier >= RagdollLOD.Tier.T2_KINEMATIC:
-		RagdollLOD.apply(self, RagdollLOD.Tier.T1_REDUCED)
+	ensure_bodies()
 	is_limp = true
 	drive_enabled = false
 	RagdollKinematicBones.update(self, _all_kinematic, false)
@@ -168,7 +168,7 @@ func apply_animation_lod(tier: RagdollLOD.Tier) -> void:
 
 
 func bake() -> void:
-	if is_baked or bones.is_empty():
+	if is_baked or not has_ragdoll():
 		return
 	_bake_requested = true
 
@@ -201,12 +201,14 @@ func all_kinematic_flags() -> PackedByteArray:
 
 
 func root_bone() -> RagdollBone:
+	ensure_bodies()
 	if bones.is_empty():
 		return null
 	return bones[0]
 
 
 func bone_for_slot(slot: String) -> RagdollBone:
+	ensure_bodies()
 	for bone in bones:
 		if bone.slot == slot:
 			return bone

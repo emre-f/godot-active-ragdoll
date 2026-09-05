@@ -11,8 +11,9 @@ signal tiers_updated
 @export_range(0, 500, 1) var limp_budget: int = 16
 @export_range(1, 30, 1) var kinematic_interval: int = 4
 @export var adaptive: bool = true
-@export_range(0.5, 33.0, 0.1) var frame_budget_ms: float = 6.0
+@export_range(0.5, 33.0, 0.1) var frame_budget_ms: float = 4.0
 @export_range(0.0, 500.0, 0.5) var min_full_budget: float = 2.0
+@export_range(1, 200, 1) var builds_per_tick: int = 4
 @export_group("Distances")
 @export_range(0.0, 500.0, 0.5) var reduced_distance: float = 12.0
 @export_range(0.0, 500.0, 0.5) var kinematic_distance: float = 30.0
@@ -26,29 +27,35 @@ var last_physics_ms: float = 0.0
 var stats := RagdollLODStats.new()
 var _timer: float = 0.0
 var _focus_points: PackedVector3Array = PackedVector3Array()
+var _build_queue: Array[RagdollActor] = []
+var _queued_tiers: Dictionary = {}
 
 
 func _ready() -> void:
 	adaptive_full_budget = full_budget
+	process_physics_priority = -100
+	_timer = update_interval
 
 
 func _physics_process(delta: float) -> void:
 	_timer += delta
-	if _timer < update_interval:
-		return
-	_timer = 0.0
-	update_tiers()
+	if _timer >= update_interval:
+		_timer = 0.0
+		update_tiers()
+	_drain_build_queue()
 
 
 func update_tiers() -> void:
 	_collect_focus_points()
 	_adapt_budget()
 	stats.reset()
+	_build_queue.clear()
+	_queued_tiers.clear()
 	var alive: Array[RagdollActor] = []
 	var limp: Array[RagdollActor] = []
 	for node in get_tree().get_nodes_in_group(RagdollActor.GROUP):
 		var actor := node as RagdollActor
-		if actor == null or actor.bones.is_empty() and not actor.is_baked:
+		if actor == null or not actor.has_ragdoll() and not actor.is_baked:
 			continue
 		if actor.is_baked:
 			stats.count_baked(actor)
@@ -62,7 +69,23 @@ func update_tiers() -> void:
 	_assign_alive(alive)
 	stats.adaptive_full_budget = adaptive_full_budget
 	stats.physics_ms = last_physics_ms
+	stats.pending_builds = _build_queue.size()
 	tiers_updated.emit()
+
+
+func _drain_build_queue() -> void:
+	var built := 0
+	while not _build_queue.is_empty() and built < builds_per_tick:
+		var actor := _build_queue.pop_front() as RagdollActor
+		if is_instance_valid(actor):
+			RagdollLOD.apply(actor, _queued_tiers[actor])
+			built += 1
+	if _build_queue.is_empty():
+		_queued_tiers.clear()
+
+
+func pending_builds() -> int:
+	return _build_queue.size()
 
 
 func _assign_limp(actors: Array[RagdollActor]) -> void:
@@ -95,7 +118,11 @@ func _assign_alive(actors: Array[RagdollActor]) -> void:
 
 func _set_tier(actor: RagdollActor, tier: RagdollLOD.Tier) -> void:
 	actor.kinematic_interval = kinematic_interval
-	RagdollLOD.apply(actor, tier)
+	if actor.is_released and tier <= RagdollLOD.Tier.T1_REDUCED and not actor.lod_pinned:
+		_build_queue.append(actor)
+		_queued_tiers[actor] = tier
+	else:
+		RagdollLOD.apply(actor, tier)
 	stats.count(actor, tier, _cost(actor))
 
 

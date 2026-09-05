@@ -36,6 +36,8 @@ static func free_bodies(actor: RagdollActor) -> void:
 		if child is RagdollBone or child is Generic6DOFJoint3D:
 			actor.remove_child(child)
 			child.queue_free()
+	actor._body_cache.free_all()
+	actor.is_released = false
 	actor.detach_bones()
 
 
