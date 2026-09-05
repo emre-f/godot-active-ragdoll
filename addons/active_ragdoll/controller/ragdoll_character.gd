@@ -2,6 +2,7 @@ class_name RagdollCharacter
 extends CharacterBody3D
 
 signal state_changed(old_state: State, new_state: State)
+signal hit_applied(impulse: Vector3, slot: String)
 
 enum State { DRIVEN, KNOCKED, SETTLING, RECOVERING, DEAD }
 
@@ -228,6 +229,7 @@ func hit(impulse: Vector3, source: Node = null, slot: String = "") -> void:
 	if bone == null:
 		bone = actor.root_bone()
 	bone.apply_central_impulse(impulse)
+	hit_applied.emit(impulse, slot)
 
 
 func is_controllable() -> bool:

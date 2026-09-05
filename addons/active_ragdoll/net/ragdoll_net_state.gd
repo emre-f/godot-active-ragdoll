@@ -11,6 +11,7 @@ var root: Transform3D = Transform3D.IDENTITY
 var hold: bool = false
 var aim_pitch: float = 0.0
 var crouching: bool = false
+var baked: bool = false
 
 
 static func blend(older: RagdollNetState, newer: RagdollNetState, weight: float) -> RagdollNetState:
@@ -25,4 +26,5 @@ static func blend(older: RagdollNetState, newer: RagdollNetState, weight: float)
 	result.hold = newer.hold
 	result.aim_pitch = lerpf(older.aim_pitch, newer.aim_pitch, weight)
 	result.crouching = newer.crouching
+	result.baked = newer.baked
 	return result

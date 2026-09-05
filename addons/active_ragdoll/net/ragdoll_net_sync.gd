@@ -7,6 +7,11 @@ enum Event { KNOCK, KILL, RECOVER, HIT }
 
 @export_range(1.0, 120.0, 1.0) var send_rate: float = 20.0
 @export_range(0.0, 1.0, 0.01) var interpolation_delay: float = 0.1
+@export_range(0.0, 2.0, 0.01) var interpolation_delay_max: float = 0.5
+@export var adaptive_delay: bool = true
+@export_range(0.5, 10.0, 0.5) var jitter_scale: float = 3.0
+@export_range(0.01, 1.0, 0.01) var clock_smoothing: float = 0.1
+@export_range(0.5, 10.0, 0.5) var bake_timeout: float = 3.0
 @export_range(0.1, 20.0, 0.1) var snap_distance: float = 2.0
 @export_range(0.0, 30.0, 0.5) var correction_rate: float = 6.0
 @export_range(0.05, 2.0, 0.05) var drag_timeout: float = 0.25
@@ -17,7 +22,10 @@ var _drag_time_left: float = 0.0
 
 var character: RagdollCharacter
 var buffer := RagdollNetBuffer.new()
+var clock := RagdollNetClock.new()
 var root_pinned: bool = false
+var arrived: bool = false
+var bake_wait: float = 0.0
 var states_received: int = 0
 var events_received: int = 0
 var _send_timer: float = 0.0
@@ -45,6 +53,7 @@ func _on_character_ready() -> void:
 		return
 	character.actor.knocked.connect(_on_knocked)
 	character.state_changed.connect(_on_state_changed)
+	character.hit_applied.connect(_on_hit_applied)
 
 
 func _physics_process(delta: float) -> void:
@@ -62,7 +71,17 @@ func _send(delta: float) -> void:
 	if _send_timer < 1.0 / send_rate:
 		return
 	_send_timer = 0.0
-	_receive_state.rpc(character.global_position, character.rotation.y, character.velocity, character.state, character.running, root_transform(), grab != null and grab.hold, grab.aim_pitch if grab != null else 0.0, crouch != null and crouch.crouching)
+	_receive_state.rpc(local_time(), character.global_position, character.rotation.y, character.velocity, character.state, character.running, root_transform(), grab != null and grab.hold, grab.aim_pitch if grab != null else 0.0, crouch != null and crouch.crouching, character.actor.is_baked)
+
+
+static func local_time() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
+
+func sample_time(delta: float) -> float:
+	var latest := buffer.latest()
+	var max_delay := interpolation_delay_max if adaptive_delay else interpolation_delay
+	return clock.sample_time(local_time(), latest.time, 1.0 / send_rate, interpolation_delay, maxf(max_delay, interpolation_delay), jitter_scale, 0.05, delta)
 
 
 func root_transform() -> Transform3D:
@@ -78,15 +97,15 @@ func apply_hit(impulse: Vector3, slot: String = "") -> void:
 	if not is_multiplayer_authority():
 		_request_hit.rpc_id(get_multiplayer_authority(), impulse, slot)
 		return
-	if impulse.length() >= character.knock_impulse_threshold * character.actor.total_mass():
-		character.knock(impulse)
-		return
 	character.hit(impulse, null, slot)
-	_receive_event.rpc(Event.HIT, impulse, slot)
 
 
 func _on_knocked(impulse: Vector3, _source: Node) -> void:
 	_last_impulse = impulse
+
+
+func _on_hit_applied(impulse: Vector3, slot: String) -> void:
+	_receive_event.rpc(Event.HIT, impulse, slot)
 
 
 func _on_state_changed(_old_state: RagdollCharacter.State, new_state: RagdollCharacter.State) -> void:
@@ -101,9 +120,10 @@ func _on_state_changed(_old_state: RagdollCharacter.State, new_state: RagdollCha
 
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func _receive_state(position: Vector3, yaw: float, velocity: Vector3, state: int, running: bool, root: Transform3D, hold: bool, aim_pitch: float, crouching: bool) -> void:
+func _receive_state(sent_time: float, position: Vector3, yaw: float, velocity: Vector3, state: int, running: bool, root: Transform3D, hold: bool, aim_pitch: float, crouching: bool, baked: bool) -> void:
+	clock.observe(sent_time, local_time(), clock_smoothing)
 	var snapshot := RagdollNetState.new()
-	snapshot.time = Time.get_ticks_msec() / 1000.0
+	snapshot.time = sent_time
 	snapshot.position = position
 	snapshot.yaw = yaw
 	snapshot.velocity = velocity
@@ -113,6 +133,7 @@ func _receive_state(position: Vector3, yaw: float, velocity: Vector3, state: int
 	snapshot.hold = hold
 	snapshot.aim_pitch = aim_pitch
 	snapshot.crouching = crouching
+	snapshot.baked = baked
 	buffer.push(snapshot)
 	states_received += 1
 
