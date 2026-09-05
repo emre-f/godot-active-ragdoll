@@ -33,6 +33,7 @@ var _kinematic_bones: PackedByteArray = PackedByteArray()
 var _all_kinematic: PackedByteArray = PackedByteArray()
 var _write_order: PackedInt32Array = PackedInt32Array()
 var _settle := RagdollSettleTracker.new()
+var _animation_lod := RagdollAnimationLOD.new()
 var _total_mass: float = 0.0
 var _reset_target_velocity: bool = true
 var _drive_tick: int = 0
@@ -102,6 +103,7 @@ func _physics_process(delta: float) -> void:
 		if _drive_tick >= kinematic_interval:
 			_drive_tick = 0
 			RagdollKinematicBones.update(self, _all_kinematic, true)
+			_animation_lod.advance(delta * kinematic_interval)
 		_reset_target_velocity = true
 		return
 	RagdollKinematicBones.update(self, _kinematic_bones, driven and strength_scale >= 1.0)
@@ -159,6 +161,10 @@ func resume_drive() -> void:
 	drive_enabled = true
 	_settle.has_settled = false
 	_set_sleep_allowed(profile.driver == null)
+
+
+func apply_animation_lod(tier: RagdollLOD.Tier) -> void:
+	_animation_lod.apply(self, tier)
 
 
 func bake() -> void:

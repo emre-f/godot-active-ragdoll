@@ -21,6 +21,7 @@ static func apply(actor: RagdollActor, tier: Tier) -> void:
 			if old_tier >= Tier.T2_KINEMATIC:
 				_set_bodies_dynamic(actor, true, true)
 				actor.snap_to_skeleton()
+	actor.apply_animation_lod(tier)
 	actor.lod_tier_changed.emit(old_tier, tier)
 
 
