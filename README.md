@@ -12,11 +12,12 @@ An active ragdoll addon for Godot 4.7 with Jolt Physics. It works for any body p
 
 ## Installation
 
-1. Copy `addons/active_ragdoll` into the `addons` folder of your project.
-2. Enable "Active Ragdoll" in Project > Project Settings > Plugins.
-3. Set Project > Physics > 3D > Physics Engine to Jolt Physics. The addon targets Jolt only.
+1. Download this repository: click the green "Code" button on GitHub and pick "Download ZIP", or run `git clone https://github.com/emre-f/godot-active-ragdoll.git`.
+2. Copy the `addons/active_ragdoll` folder into the `addons` folder of your project. Create `addons` if it does not exist yet. The path must be `res://addons/active_ragdoll`.
+3. Open your project. Go to Project > Project Settings > Plugins and enable "Active Ragdoll".
+4. Set Project > Project Settings > Physics > 3D > Physics Engine to Jolt Physics. The addon targets Jolt only.
 
-The release zip named `no-demo` has the addon without the demo folder.
+The `demo` folder inside the addon is optional. Delete it if you do not want the demo scene and its model in your project.
 
 ## Demo
 
