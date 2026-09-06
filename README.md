@@ -20,7 +20,7 @@ The release zip named `no-demo` has the addon without the demo folder.
 
 ## Demo
 
-Open `addons/active_ragdoll/demo/demo.tscn` and run it. It has a player, a spider, eight wandering bipeds, crates, a ball, and a LOD manager. The rigs are placeholder skeletons without a mesh, so the bodies are drawn as capsules.
+Open `addons/active_ragdoll/demo/demo.tscn` and run it. It has a player, a spider, eight wandering bipeds, crates, a ball, and a LOD manager. The bipeds use the stylized human in `demo/rigs/human.glb`, with idle, walk, and jump clips. Its bones have numbered names, so the demo profiles carry a saved bone map instead of an auto-mapped one. The spider is a placeholder skeleton without a mesh, so its bodies are drawn as capsules.
 
 | Key | Action |
 | --- | --- |
@@ -108,4 +108,4 @@ The addon is developed in a separate lab project with playgrounds and headless t
 
 ## License
 
-MIT
+MIT. The demo human model in `demo/rigs/human.glb` is made by the author and is MIT as well, so you can use it in your own projects.

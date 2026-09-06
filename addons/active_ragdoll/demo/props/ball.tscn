@@ -10,12 +10,12 @@ albedo_color = Color(0.3882353, 0.78039217, 0.3019608, 1)
 radius = 0.25
 height = 0.5
 
-[node name="Ball" type="RigidBody3D" unique_id=1981992942]
+[node name="Ball" type="RigidBody3D" unique_id=1512975887]
 mass = 3.0
 
-[node name="@CollisionShape3D@9" type="CollisionShape3D" parent="." unique_id=512222351]
+[node name="@CollisionShape3D@9" type="CollisionShape3D" parent="." unique_id=2015661657]
 shape = SubResource("SphereShape3D_ixn0n")
 
-[node name="@MeshInstance3D@10" type="MeshInstance3D" parent="." unique_id=359322841]
+[node name="@MeshInstance3D@10" type="MeshInstance3D" parent="." unique_id=155129039]
 material_override = SubResource("StandardMaterial3D_5scoc")
 mesh = SubResource("SphereMesh_r7rtq")

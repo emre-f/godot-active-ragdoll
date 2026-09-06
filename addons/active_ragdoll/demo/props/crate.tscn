@@ -9,12 +9,12 @@ albedo_color = Color(0.72156864, 0.43529412, 0.3137255, 1)
 [sub_resource type="BoxMesh" id="BoxMesh_g2hig"]
 size = Vector3(0.4, 0.4, 0.4)
 
-[node name="Crate" type="RigidBody3D" unique_id=69438315]
+[node name="Crate" type="RigidBody3D" unique_id=713035344]
 mass = 8.0
 
-[node name="@CollisionShape3D@5" type="CollisionShape3D" parent="." unique_id=1889951317]
+[node name="@CollisionShape3D@5" type="CollisionShape3D" parent="." unique_id=439107081]
 shape = SubResource("BoxShape3D_jtgjv")
 
-[node name="@MeshInstance3D@6" type="MeshInstance3D" parent="." unique_id=703177906]
+[node name="@MeshInstance3D@6" type="MeshInstance3D" parent="." unique_id=148041940]
 material_override = SubResource("StandardMaterial3D_b2qce")
 mesh = SubResource("BoxMesh_g2hig")
