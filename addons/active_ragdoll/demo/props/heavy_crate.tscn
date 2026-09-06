@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_dnoao"]
+size = Vector3(0.7, 0.7, 0.7)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_464m0"]
+albedo_color = Color(0.4509804, 0.24313726, 0.22352941, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_difok"]
+size = Vector3(0.7, 0.7, 0.7)
+
+[node name="HeavyCrate" type="RigidBody3D" unique_id=770137051]
+mass = 40.0
+
+[node name="@CollisionShape3D@7" type="CollisionShape3D" parent="." unique_id=1462467805]
+shape = SubResource("BoxShape3D_dnoao")
+
+[node name="@MeshInstance3D@8" type="MeshInstance3D" parent="." unique_id=182282194]
+material_override = SubResource("StandardMaterial3D_464m0")
+mesh = SubResource("BoxMesh_difok")

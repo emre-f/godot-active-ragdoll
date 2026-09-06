@@ -12,7 +12,8 @@ signal released(body: RigidBody3D)
 @export_range(0.1, 3.0, 0.01) var reach: float = 0.6
 @export_range(0.0, 1.5, 0.01) var hand_spacing: float = 0.3
 @export_range(-1.0, 1.0, 0.01) var hand_height: float = 0.0
-@export_range(0.05, 1.0, 0.01) var grab_radius: float = 0.5
+@export_range(0.05, 1.5, 0.01) var grab_radius: float = 0.7
+@export_range(0.0, 0.5, 0.01) var grab_lead_time: float = 0.1
 @export_range(-89.0, 0.0, 1.0) var pitch_min_degrees: float = -80.0
 @export_range(0.0, 89.0, 1.0) var pitch_max_degrees: float = 70.0
 @export_flags_3d_physics var grab_mask: int = 1
@@ -22,7 +23,7 @@ signal released(body: RigidBody3D)
 @export_group("Hold")
 @export_range(0.0, 200.0, 0.5) var lift_mass_limit: float = 10.0
 @export_range(0.01, 1.0, 0.01) var lift_response_time: float = 0.08
-@export_range(0.5, 30.0, 0.5) var lift_speed_max: float = 8.0
+@export_range(0.5, 30.0, 0.5) var lift_speed_max: float = 5.0
 @export_range(0.0, 2000.0, 10.0) var lift_force_max: float = 150.0
 @export_range(0.0, 5000.0, 10.0) var pull_force_max: float = 1200.0
 @export_range(0.0, 10.0, 0.1) var drag_speed_max: float = 1.5
@@ -31,6 +32,10 @@ signal released(body: RigidBody3D)
 @export_range(0.1, 3.0, 0.05) var break_slack: float = 1.0
 @export_range(0.0, 2.0, 0.01) var break_time: float = 0.15
 @export_range(0.0, 1.0, 0.05) var held_speed_scale: float = 0.6
+@export_group("Trip")
+@export_range(0.0, 2.0, 0.05) var trip_time: float = 0.2
+@export_range(0.0, 2.0, 0.05) var trip_slack: float = 0.25
+@export_range(0.0, 20.0, 0.5) var trip_impulse: float = 5.0
 
 var hold: bool = false
 var aim_pitch: float = 0.0
@@ -155,7 +160,8 @@ func _process(delta: float) -> void:
 func _search(hands: Vector3) -> void:
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = _sphere
-	query.transform = Transform3D(Basis(), hands)
+	var lead := character.velocity * grab_lead_time if character != null else Vector3.ZERO
+	query.transform = Transform3D(Basis(), hands + lead)
 	query.collision_mask = grab_mask
 	query.exclude = RagdollIKSupport.exclusions(actor)
 	var best: RigidBody3D = null
@@ -206,6 +212,15 @@ func drag_character(target: RagdollCharacter, velocity: Vector3, scale: float) -
 	for child in target.get_children():
 		if child is RagdollNetSync:
 			child.send_drag(velocity, scale)
+
+
+func trip_character(target: RagdollCharacter, impulse: Vector3, slot: String) -> void:
+	if target.is_multiplayer_authority():
+		target.hit(impulse, character, slot)
+		return
+	for child in target.get_children():
+		if child is RagdollNetSync:
+			child.apply_hit(impulse, slot)
 
 
 func stop_drag(target: RagdollCharacter) -> void:

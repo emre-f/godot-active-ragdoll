@@ -10,6 +10,8 @@ var local_point: Vector3 = Vector3.ZERO
 var _grab: RagdollGrab
 var _carry_basis: Basis = Basis()
 var _victim: RagdollCharacter
+var _leg_hold: bool = false
+var _trip_time: float = 0.0
 var _stretched_time: float = 0.0
 var _excluded: Array[PhysicsBody3D] = []
 
@@ -36,7 +38,10 @@ func _begin_lift(anchor: Vector3) -> void:
 
 func _holder_basis() -> Basis:
 	var facing := _grab.forward()
-	return Basis.looking_at(facing, Vector3.UP) if facing.length_squared() > 0.0001 else Basis()
+	var up := _grab.up()
+	if facing.cross(up).length_squared() < 0.0001:
+		return Basis()
+	return Basis.looking_at(facing, up)
 
 
 func _carry(anchor: Vector3, delta: float) -> void:
@@ -54,6 +59,14 @@ func _carry(anchor: Vector3, delta: float) -> void:
 func _begin_pull(anchor: Vector3) -> void:
 	local_point = body.to_local(_surface_point(anchor))
 	_victim = character_of(body)
+	for bone in _grab.actor.bones:
+		_exclude(bone)
+	_leg_hold = _victim != null and body is RagdollBone and _is_leg(body)
+
+
+func _is_leg(bone: RagdollBone) -> bool:
+	var chain := _victim.actor.profile.archetype.chain_for_slot(bone.slot)
+	return chain != null and chain.chain_type == RagdollChain.ChainType.LEG
 
 
 func _surface_point(anchor: Vector3) -> Vector3:
@@ -94,17 +107,29 @@ func update(anchor: Vector3, delta: float) -> bool:
 	var toward_holder := rope.normalized()
 	_leash_holder(toward_holder, stretch)
 	var pull_speed := maxf(stretch, 0.0) / _grab.pull_response_time
-	if _victim != null:
-		_grab.drag_character(_victim, toward_holder * minf(pull_speed, _grab.drag_speed_max), _grab.held_speed_scale)
+	if _victim != null and _victim.is_controllable():
+		if _trips(stretch, delta):
+			_grab.trip_character(_victim, (toward_holder + Vector3.UP * 0.5).normalized() * _grab.trip_impulse * _victim.actor.total_mass(), body.slot)
+		else:
+			_grab.drag_character(_victim, toward_holder * minf(pull_speed, _grab.drag_speed_max), _grab.held_speed_scale)
 		return true
 	body.sleeping = false
+	var mass := _victim.actor.total_mass() if _victim != null else body.mass
 	var point_velocity := body.linear_velocity + body.angular_velocity.cross(grab_point - body.global_position)
-	var force := (toward_holder * pull_speed - point_velocity) * body.mass / _grab.pull_response_time
+	var force := (toward_holder * pull_speed - point_velocity) * mass / _grab.pull_response_time
 	var lift_speed := (anchor.y - grab_point.y) / _grab.pull_response_time
-	var lift := (lift_speed - point_velocity.y) * body.mass / _grab.pull_response_time
+	var lift := (lift_speed - point_velocity.y) * mass / _grab.pull_response_time
 	force.y = clampf(lift, -_grab.lift_force_max, _grab.lift_force_max)
 	body.apply_force(force.limit_length(_grab.pull_force_max + _grab.lift_force_max), grab_point - body.global_position)
 	return true
+
+
+func _trips(stretch: float, delta: float) -> bool:
+	if not _leg_hold or stretch < _grab.trip_slack:
+		_trip_time = 0.0
+		return false
+	_trip_time += delta
+	return _trip_time >= _grab.trip_time
 
 
 func _leash_holder(toward_holder: Vector3, stretch: float) -> void:
@@ -119,6 +144,8 @@ func _leash_holder(toward_holder: Vector3, stretch: float) -> void:
 
 func end() -> void:
 	if is_instance_valid(body):
+		if kind == Kind.LIFT:
+			body.linear_velocity = body.linear_velocity.limit_length(_grab.lift_speed_max)
 		for other in _excluded:
 			if is_instance_valid(other):
 				body.remove_collision_exception_with(other)

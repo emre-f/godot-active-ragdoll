@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the plugin version against the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(sed -n 's/^version="\(.*\)"/\1/p' addons/active_ragdoll/plugin.cfg)"
+          if [ "$tag" != "$version" ]; then
+            echo "plugin.cfg version $version does not match tag $tag"
+            exit 1
+          fi
+      - name: Zip the addon
+        run: |
+          mkdir -p dist
+          zip -r "dist/active_ragdoll-${GITHUB_REF_NAME}.zip" addons/active_ragdoll LICENSE README.md -x "*.uid" -x "*.DS_Store"
+          zip -r "dist/active_ragdoll-${GITHUB_REF_NAME}-no-demo.zip" addons/active_ragdoll LICENSE README.md -x "*.uid" -x "*.DS_Store" -x "addons/active_ragdoll/demo/*"
+      - name: Create the GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true

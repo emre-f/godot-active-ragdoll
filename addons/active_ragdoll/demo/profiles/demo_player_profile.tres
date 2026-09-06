@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="RagdollProfile" format=3]
+
+[ext_resource type="Resource" path="res://addons/active_ragdoll/archetypes/biped_humanoid.tres" id="1_t2msu"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_bone_map.gd" id="2_fugsu"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/drivers/ragdoll_velocity_match_driver.gd" id="3_r6j0a"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_profile.gd" id="4_oipjq"]
+
+[sub_resource type="Resource" id="Resource_0mbqc"]
+resource_name = "placeholder_biped_bone_map"
+script = ExtResource("2_fugsu")
+archetype = ExtResource("1_t2msu")
+slot_to_bone = {
+"chest": "Chest",
+"foot_l": "Foot.L",
+"foot_r": "Foot.R",
+"forearm_l": "LowerArm.L",
+"forearm_r": "LowerArm.R",
+"hand_l": "Wrist.L",
+"hand_r": "Wrist.R",
+"head": "Head",
+"neck": "Neck",
+"pelvis": "Hips",
+"shin_l": "LowerLeg.L",
+"shin_r": "LowerLeg.R",
+"spine": "Spine",
+"thigh_l": "UpperLeg.L",
+"thigh_r": "UpperLeg.R",
+"upper_arm_l": "UpperArm.L",
+"upper_arm_r": "UpperArm.R"
+}
+
+[sub_resource type="Resource" id="Resource_mcvv1"]
+script = ExtResource("3_r6j0a")
+
+[resource]
+script = ExtResource("4_oipjq")
+archetype = ExtResource("1_t2msu")
+bone_map = SubResource("Resource_0mbqc")
+driver = SubResource("Resource_mcvv1")
+debug_meshes = true

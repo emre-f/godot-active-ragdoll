@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="RagdollProfile" format=3]
+
+[ext_resource type="Resource" path="res://addons/active_ragdoll/archetypes/arachnid.tres" id="1_myylu"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_bone_map.gd" id="2_yq1eg"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/drivers/ragdoll_velocity_match_driver.gd" id="3_5u4l4"]
+[ext_resource type="Script" path="res://addons/active_ragdoll/core/ragdoll_profile.gd" id="4_kd0c4"]
+
+[sub_resource type="Resource" id="Resource_waijf"]
+resource_name = "placeholder_arachnid_bone_map"
+script = ExtResource("2_yq1eg")
+archetype = ExtResource("1_myylu")
+slot_to_bone = {
+"abdomen": "Abdomen",
+"cephalothorax": "Cephalothorax",
+"leg1_l_coxa": "Leg1.L.Coxa",
+"leg1_l_femur": "Leg1.L.Femur",
+"leg1_l_tibia": "Leg1.L.Tibia",
+"leg1_r_coxa": "Leg1.R.Coxa",
+"leg1_r_femur": "Leg1.R.Femur",
+"leg1_r_tibia": "Leg1.R.Tibia",
+"leg2_l_coxa": "Leg2.L.Coxa",
+"leg2_l_femur": "Leg2.L.Femur",
+"leg2_l_tibia": "Leg2.L.Tibia",
+"leg2_r_coxa": "Leg2.R.Coxa",
+"leg2_r_femur": "Leg2.R.Femur",
+"leg2_r_tibia": "Leg2.R.Tibia",
+"leg3_l_coxa": "Leg3.L.Coxa",
+"leg3_l_femur": "Leg3.L.Femur",
+"leg3_l_tibia": "Leg3.L.Tibia",
+"leg3_r_coxa": "Leg3.R.Coxa",
+"leg3_r_femur": "Leg3.R.Femur",
+"leg3_r_tibia": "Leg3.R.Tibia",
+"leg4_l_coxa": "Leg4.L.Coxa",
+"leg4_l_femur": "Leg4.L.Femur",
+"leg4_l_tibia": "Leg4.L.Tibia",
+"leg4_r_coxa": "Leg4.R.Coxa",
+"leg4_r_femur": "Leg4.R.Femur",
+"leg4_r_tibia": "Leg4.R.Tibia"
+}
+
+[sub_resource type="Resource" id="Resource_ji2an"]
+script = ExtResource("3_5u4l4")
+
+[resource]
+script = ExtResource("4_kd0c4")
+archetype = ExtResource("1_myylu")
+bone_map = SubResource("Resource_waijf")
+driver = SubResource("Resource_ji2an")
+total_mass = 20.0
+debug_meshes = true
